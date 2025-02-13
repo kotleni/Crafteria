@@ -1,7 +1,0 @@
-/home/kotleni/Projects/Crafteria/build/CMakeFiles/edit_cache.dir
-/home/kotleni/Projects/Crafteria/build/CMakeFiles/rebuild_cache.dir
-/home/kotleni/Projects/Crafteria/build/client/CMakeFiles/edit_cache.dir
-/home/kotleni/Projects/Crafteria/build/client/CMakeFiles/rebuild_cache.dir
-/home/kotleni/Projects/Crafteria/build/client/platform/CMakeFiles/platform.dir
-/home/kotleni/Projects/Crafteria/build/client/platform/CMakeFiles/edit_cache.dir
-/home/kotleni/Projects/Crafteria/build/client/platform/CMakeFiles/rebuild_cache.dir
