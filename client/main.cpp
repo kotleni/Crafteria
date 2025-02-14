@@ -1,276 +1,200 @@
-#include <SDL2/SDL.h>
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/string_cast.hpp>
-#include <glm/ext.hpp>
+/*
+    Minimal SDL2 + OpenGL3 example.
+
+    Author: https://github.com/koute
+
+    This file is in the public domain; you can do whatever you want with it.
+    In case the concept of public domain doesn't exist in your jurisdiction
+    you can also use this code under the terms of Creative Commons CC0 license,
+    either version 1.0 or (at your option) any later version; for details see:
+        http://creativecommons.org/publicdomain/zero/1.0/
+
+    This software is distributed without any warranty whatsoever.
+
+    Compile and run with: gcc opengl3_hello.c `sdl2-config --libs --cflags` -lGL -Wall && ./a.out
+*/
 
 #define GL_GLEXT_PROTOTYPES
+
+#include <SDL2/SDL.h>
 #include <GL/gl.h>
 #include <GL/glext.h>
 
-#define WINDOW_NAME "Crafteria"
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 600
+#include <stdio.h>
 
-static GLuint tri_vbo; /* the VBO id for vertex data */
-static GLuint tri_color_vbo; /* the VBO id for color data */
-static unsigned tri_vbo_elem; /* number of elements in this one */
+typedef float t_mat4x4[16];
 
-#define check_gl_error() do { \
-	GLenum e##__LINE__ = glGetError(); \
-	if (e##__LINE__ != GL_NO_ERROR) \
-		fprintf(stderr,"ERROR:%d:glerr=%d\n", __LINE__, e##__LINE__); \
-	} while(0)
-
-
-static void initialize_scene(void)
+static inline void mat4x4_ortho( t_mat4x4 out, float left, float right, float bottom, float top, float znear, float zfar )
 {
-	SDL_Window *win = SDL_GL_GetCurrentWindow();
-	/* black screen */
-	glClearColor(0.0, 0.0, 0.0, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	SDL_GL_SwapWindow(win);
+    #define T(a, b) (a * 4 + b)
 
-	/* setup projection matrix */
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
+    out[T(0,0)] = 2.0f / (right - left);
+    out[T(0,1)] = 0.0f;
+    out[T(0,2)] = 0.0f;
+    out[T(0,3)] = 0.0f;
 
-	/* hacky way to correct for aspect ratio */
-	int width, height;
-	SDL_GetWindowSize(win, &width, &height);
-	double aspect_root = sqrt((double)width / (double)height);
-	double nearest = 0.125; /* how close you can get before it's clipped. */
-	glFrustum(-nearest * aspect_root, nearest * aspect_root,
-		-nearest / aspect_root, nearest / aspect_root,
-		nearest, 1000.0);
+    out[T(1,1)] = 2.0f / (top - bottom);
+    out[T(1,0)] = 0.0f;
+    out[T(1,2)] = 0.0f;
+    out[T(1,3)] = 0.0f;
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	check_gl_error();
-}
-static void paint_scene(void)
-{
-	SDL_Window *win = SDL_GL_GetCurrentWindow();
-	static float angle_x = 0.0, angle_y = 0.0, angle_z = 0.0;
+    out[T(2,2)] = -2.0f / (zfar - znear);
+    out[T(2,0)] = 0.0f;
+    out[T(2,1)] = 0.0f;
+    out[T(2,3)] = 0.0f;
 
-	glClearColor(0.0, 1.0, 1.0, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    out[T(3,0)] = -(right + left) / (right - left);
+    out[T(3,1)] = -(top + bottom) / (top - bottom);
+    out[T(3,2)] = -(zfar + znear) / (zfar - znear);
+    out[T(3,3)] = 1.0f;
 
-	glEnable(GL_CULL_FACE);
-
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	glTranslatef(0.0, 0.0, -3.0);
-	glRotatef(angle_x, 1.0, 0.0, 0.0);
-	glRotatef(angle_y, 0.0, 1.0, 0.0);
-	glRotatef(angle_z, 0.0, 0.0, 1.0);
-	angle_x += 2.0;
-	angle_y += 3.0;
-	angle_z += 4.0;
-
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glBindBuffer(GL_ARRAY_BUFFER, tri_vbo);
-	glVertexPointer(3, GL_FLOAT, 0, (void*)(0));
-
-	glEnableClientState(GL_COLOR_ARRAY);
-	glBindBuffer(GL_ARRAY_BUFFER, tri_color_vbo);
-	glColorPointer(3, GL_FLOAT, 0, (void*)(0));
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0); /* release binding */
-
-	glDrawArrays(GL_TRIANGLES, 0, tri_vbo_elem);
-	check_gl_error();
-	glDisableClientState(GL_VERTEX_ARRAY);
-
-	glFlush();
-	SDL_GL_SwapWindow(win);
-	check_gl_error();
+    #undef T
 }
 
-int main()
+static const char * vertex_shader =
+    "#version 130\n"
+    "in vec2 i_position;\n"
+    "in vec4 i_color;\n"
+    "out vec4 v_color;\n"
+    "uniform mat4 u_projection_matrix;\n"
+    "void main() {\n"
+    "    v_color = i_color;\n"
+    "    gl_Position = u_projection_matrix * vec4( i_position, 0.0, 1.0 );\n"
+    "}\n";
+
+static const char * fragment_shader =
+    "#version 130\n"
+    "in vec4 v_color;\n"
+    "out vec4 o_color;\n"
+    "void main() {\n"
+    "    o_color = v_color;\n"
+    "}\n";
+
+typedef enum t_attrib_id
 {
-	if (SDL_Init(SDL_INIT_VIDEO) < 0)
-		return EXIT_FAILURE;
+    attrib_position,
+    attrib_color
+} t_attrib_id;
 
-#if 0
-	/* configure the OpenGL version to use. */
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
-		SDL_GL_CONTEXT_PROFILE_CORE);
-#endif
+int main( int argc, char * argv[] )
+{
+    SDL_Init( SDL_INIT_VIDEO );
+    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
+    SDL_GL_SetAttribute( SDL_GL_ACCELERATED_VISUAL, 1 );
+    SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
+    SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
+    SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
+    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 8 );
 
-	/* create a window suitable for OpenGL. */
-	SDL_Window *mainwin = SDL_CreateWindow(WINDOW_NAME,
-		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-		WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-	if (!mainwin) {
-		fprintf(stderr, "ERROR:%s\n", SDL_GetError());
-		SDL_DestroyWindow(mainwin);
-	    SDL_Quit();
-        return EXIT_FAILURE;
-	}
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 2 );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
 
-	/* create a context. */
-	SDL_GLContext glctx = SDL_GL_CreateContext(mainwin);
-	if (!glctx) {
-		fprintf(stderr, "ERROR:%s\n", SDL_GetError());
-		SDL_DestroyWindow(mainwin);
-	    SDL_Quit();
-        return EXIT_FAILURE;
-	}
-	SDL_GL_SetSwapInterval(1);
+    static const int width = 800;
+    static const int height = 600;
 
-	/* initialize the scene and create the VBO */
-	initialize_scene();
+    SDL_Window * window = SDL_CreateWindow( "", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
+    SDL_GLContext context = SDL_GL_CreateContext( window );
 
-	float tri_data[] = {
-		/* face 1 */
-		1.0, -1.0, -1.0,
-		-1.0, 1.0, -1.0,
-		1.0, 1.0, -1.0,
+    GLuint vs, fs, program;
 
-		-1.0, 1.0, -1.0,
-		1.0, -1.0, -1.0,
-		-1.0, -1.0, -1.0,
+    vs = glCreateShader( GL_VERTEX_SHADER );
+    fs = glCreateShader( GL_FRAGMENT_SHADER );
 
-		/* face 2 */
-		-1.0, 1.0, 1.0,
-		1.0, -1.0, 1.0,
-		1.0, 1.0, 1.0,
+    int length = strlen( vertex_shader );
+    glShaderSource( vs, 1, ( const GLchar ** )&vertex_shader, &length );
+    glCompileShader( vs );
 
-		1.0, -1.0, 1.0,
-		-1.0, 1.0, 1.0,
-		-1.0, -1.0, 1.0,
+    GLint status;
+    glGetShaderiv( vs, GL_COMPILE_STATUS, &status );
+    if( status == GL_FALSE )
+    {
+        fprintf( stderr, "vertex shader compilation failed\n" );
+        return 1;
+    }
 
-		/* face 3 */
-		-1.0, 1.0, -1.0,
-		-1.0, 1.0, 1.0,
-		1.0, 1.0, -1.0,
+    length = strlen( fragment_shader );
+    glShaderSource( fs, 1, ( const GLchar ** )&fragment_shader, &length );
+    glCompileShader( fs );
 
-		-1.0, 1.0, 1.0,
-		1.0, 1.0, 1.0,
-		1.0, 1.0, -1.0,
+    glGetShaderiv( fs, GL_COMPILE_STATUS, &status );
+    if( status == GL_FALSE )
+    {
+        fprintf( stderr, "fragment shader compilation failed\n" );
+        return 1;
+    }
 
-		/* face 4 */
-		-1.0, -1.0, 1.0,
-		-1.0, -1.0, -1.0,
-		1.0, -1.0, -1.0,
+    program = glCreateProgram();
+    glAttachShader( program, vs );
+    glAttachShader( program, fs );
 
-		1.0, -1.0, 1.0,
-		-1.0, -1.0, 1.0,
-		1.0, -1.0, -1.0,
+    glBindAttribLocation( program, attrib_position, "i_position" );
+    glBindAttribLocation( program, attrib_color, "i_color" );
+    glLinkProgram( program );
 
-		/* face 5 */
-		1.0, 1.0, -1.0,
-		1.0, 1.0, 1.0,
-		1.0, -1.0, 1.0,
+    glUseProgram( program );
 
-		1.0, 1.0, -1.0,
-		1.0, -1.0, 1.0,
-		1.0, -1.0, -1.0,
+    glDisable( GL_DEPTH_TEST );
+    glClearColor( 0.5, 0.0, 0.0, 0.0 );
+    glViewport( 0, 0, width, height );
 
-		/* face 6 */
-		-1.0, 1.0, 1.0,
-		-1.0, 1.0, -1.0,
-		-1.0, -1.0, 1.0,
+    GLuint vao, vbo;
 
-		-1.0, -1.0, 1.0,
-		-1.0, 1.0, -1.0,
-		-1.0, -1.0, -1.0,
-	};
-	float tri_color[] = {
-		/* face 1 */
-		0.0, 0.7, 1.0,
-		0.0, 0.7, 1.0,
-		0.0, 0.7, 1.0,
-		0.0, 0.7, 1.0,
-		0.0, 0.7, 1.0,
-		0.0, 0.7, 1.0,
+    glGenVertexArrays( 1, &vao );
+    glGenBuffers( 1, &vbo );
+    glBindVertexArray( vao );
+    glBindBuffer( GL_ARRAY_BUFFER, vbo );
 
-		/* face 2 */
-		0.9, 1.0, 0.0,
-		0.9, 1.0, 0.0,
-		0.9, 1.0, 0.0,
-		0.9, 1.0, 0.0,
-		0.9, 1.0, 0.0,
-		0.9, 1.0, 0.0,
+    glEnableVertexAttribArray( attrib_position );
+    glEnableVertexAttribArray( attrib_color );
 
-		/* face 3 */
-		0.2, 0.2, 1.0,
-		0.2, 0.2, 1.0,
-		0.2, 0.2, 1.0,
-		0.2, 0.2, 1.0,
-		0.2, 0.2, 1.0,
-		0.2, 0.2, 1.0,
+    glVertexAttribPointer( attrib_color, 4, GL_FLOAT, GL_FALSE, sizeof( float ) * 6, 0 );
+    glVertexAttribPointer( attrib_position, 2, GL_FLOAT, GL_FALSE, sizeof( float ) * 6, ( void * )(4 * sizeof(float)) );
 
-		/* face 4 */
-		0.9, 0.1, 0.1,
-		0.9, 0.1, 0.1,
-		0.9, 0.1, 0.1,
-		0.9, 0.1, 0.1,
-		0.9, 0.1, 0.1,
-		0.9, 0.1, 0.1,
+    const GLfloat g_vertex_buffer_data[] = {
+    /*  R, G, B, A, X, Y  */
+        1, 0, 0, 1, 0, 0,
+        0, 1, 0, 1, width, 0,
+        0, 0, 1, 1, width, height,
 
-		/* face 5 */
-		0.1, 0.7, 0.1,
-		0.1, 0.7, 0.1,
-		0.1, 0.7, 0.1,
-		0.1, 0.7, 0.1,
-		0.1, 0.7, 0.1,
-		0.1, 0.7, 0.1,
+        1, 0, 0, 1, 0, 0,
+        0, 0, 1, 1, width, height,
+        1, 1, 1, 1, 0, height
+    };
 
-		/* face 6 */
-		0.7, 0.0, 0.7,
-		0.7, 0.0, 0.7,
-		0.7, 0.0, 0.7,
-		0.7, 0.0, 0.7,
-		0.7, 0.0, 0.7,
-		0.7, 0.0, 0.7,
-	};
+    glBufferData( GL_ARRAY_BUFFER, sizeof( g_vertex_buffer_data ), g_vertex_buffer_data, GL_STATIC_DRAW );
 
-	/* vertex buffer ... */
-	glGenBuffers(1, &tri_vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, tri_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(tri_data), tri_data,
-		GL_STATIC_DRAW);
-	tri_vbo_elem = sizeof(tri_data) / sizeof(*tri_data) / 3;
-	glBindBuffer(GL_ARRAY_BUFFER, 0); /* release binding */
+    t_mat4x4 projection_matrix;
+    mat4x4_ortho( projection_matrix, 0.0f, (float)width, (float)height, 0.0f, 0.0f, 100.0f );
+    glUniformMatrix4fv( glGetUniformLocation( program, "u_projection_matrix" ), 1, GL_FALSE, projection_matrix );
 
-	/* color buffer */
-	glGenBuffers(1, &tri_color_vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, tri_color_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(tri_color), tri_color,
-		GL_STATIC_DRAW);
-	if (tri_vbo_elem != (sizeof(tri_color) / sizeof(*tri_color) / 3)) {
-		fprintf(stderr, "ERROR:tri_color[] does not have the same number of elements as tri_data[]\n");
-		// TODO: bail
-	}
-	glBindBuffer(GL_ARRAY_BUFFER, 0); /* release binding */
+    for( ;; )
+    {
+        glClear( GL_COLOR_BUFFER_BIT );
 
-	/* Event Loop */
-	bool quit = false;
-	while (1) {
-		SDL_Event ev;
+        SDL_Event event;
+        while( SDL_PollEvent( &event ) )
+        {
+            switch( event.type )
+            {
+                case SDL_KEYUP:
+                    if( event.key.keysym.sym == SDLK_ESCAPE )
+                        return 0;
+                    break;
+            }
+        }
 
-		/* process events until timeout occurs */
-		while (SDL_WaitEventTimeout(&ev, 15)) {
-			switch (ev.type) {
-			case SDL_QUIT:
-				quit = true;
-				SDL_DestroyWindow(mainwin);
-	            SDL_Quit();
-                return EXIT_FAILURE;
-			}
-		}
+        glBindVertexArray( vao );
+        glDrawArrays( GL_TRIANGLES, 0, 6 );
 
-		paint_scene();
-	}
-    
-	SDL_DestroyWindow(mainwin);
-	SDL_Quit();
+        SDL_GL_SwapWindow( window );
+        SDL_Delay( 1 );
+    }
 
-	return 0;
+    SDL_GL_DeleteContext( context );
+    SDL_DestroyWindow( window );
+    SDL_Quit();
+
+    return 0;
 }
+
