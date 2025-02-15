@@ -15,6 +15,21 @@
 #define CHUNK_SIZE_XYZ 16
 #define CHUNK_RENDERING_DISTANCE (2 * CHUNK_SIZE_XYZ)
 
+struct Clock
+{
+    uint32_t last_tick_time = 0;
+    uint32_t delta = 0;
+
+    void tick()
+    {
+        uint32_t tick_time = SDL_GetTicks();
+        delta = tick_time - last_tick_time;
+        last_tick_time = tick_time;
+    }
+};
+
+Clock globalClock;
+
 class Vec3i {
 public:
     Vec3i(int x, int y, int z) {
@@ -547,6 +562,8 @@ int main() {
 
     bool running = true;
     while (running) {
+        globalClock.tick();
+
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -570,7 +587,7 @@ int main() {
         }
 
         const Uint8 *state = SDL_GetKeyboardState(NULL);
-        float camera_speed = 0.1f;
+        float camera_speed = 0.01f * globalClock.delta;
         if (state[SDL_SCANCODE_W]) camera_pos += camera_speed * camera_front;
         if (state[SDL_SCANCODE_S]) camera_pos -= camera_speed * camera_front;
         if (state[SDL_SCANCODE_A]) camera_pos -= glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
