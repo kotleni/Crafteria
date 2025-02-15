@@ -1,5 +1,6 @@
 #define GL_GLEXT_PROTOTYPES
 
+#include <array>
 #include <SDL2/SDL.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -22,6 +23,10 @@ public:
 
     bool operator==(const Vec3i &other) const {
         return this->x == other.x && this->y == other.y && this->z == other.z;
+    }
+
+    Vec3i operator+(const Vec3i &other) const {
+        return {this->x + other.x, this->y + other.y, this->z + other.z};
     }
 
     int x;
@@ -49,10 +54,10 @@ public:
     int hash = -1;
     Vec3i position;
 
-    std::vector<Block*> blocks;
+    std::vector<Block *> blocks;
 
     void setBlock(BlockID id, Vec3i pos) {
-        for (Block *cube : blocks) {
+        for (Block *cube: blocks) {
             if (cube->position == pos) {
                 cube->id = id; // Replace id
                 return;
@@ -62,8 +67,8 @@ public:
         blocks.push_back(new Block(pos));
     }
 
-    Block* getBlock(Vec3i pos) {
-        for (Block *cube : blocks) {
+    Block *getBlock(Vec3i pos) {
+        for (Block *cube: blocks) {
             if (cube->position == pos) {
                 return cube;
             }
@@ -74,7 +79,7 @@ public:
 
 class World {
 public:
-    std::vector<Chunk*> chunks;
+    std::vector<Chunk *> chunks;
 
     void generateFilledChunk(Vec3i pos) {
         Chunk *chunk = new Chunk(pos);
@@ -90,7 +95,7 @@ public:
     }
 
     void setBlock(BlockID id, Vec3i pos) {
-        for (Chunk *chunk : this->chunks) {
+        for (Chunk *chunk: this->chunks) {
             chunk->setBlock(id, pos);
         }
     }
@@ -98,15 +103,15 @@ public:
 
 GLfloat cube_vertices[] = {
     // Positions          // Normals          // Texture Coords
-    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
+    0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f,
+    0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f, 1.0f, 1.0f,
+    -0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f,
 
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f, 1.0f
+    -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+    0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+    0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
+    -0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f
 };
 
 
@@ -157,53 +162,257 @@ struct BakedChunk {
  */
 class ChunksRenderer {
 private:
-    std::pmr::unordered_map<int, BakedChunk*> cachedBakedChunks;
+    std::pmr::unordered_map<int, BakedChunk *> cachedBakedChunks;
 
-    BakedChunk* bakeChunk(Chunk* chunk) {
+    BakedChunk *bakeChunk(Chunk *chunk) {
         if (cachedBakedChunks.contains(chunk->hash)) {
             return cachedBakedChunks.at(chunk->hash);
         }
         auto bakedChunk = new BakedChunk();
 
-        for (const auto& block : chunk->blocks) {
-            Block* currentBlock = block;
+        for (const auto &block: chunk->blocks) {
+            Block *currentBlock = block;
+            Vec3i neighborOffsets[] = {
+                Vec3i(0, 0, -1), // front
+                Vec3i(0, 0, 1), // back
+                Vec3i(0, -1, 0), // bottom
+                Vec3i(0, 1, 0), // top
+                Vec3i(-1, 0, 0), // left
+                Vec3i(1, 0, 0), // right
+            };
+
+            glm::vec3 faceDirections[] = {
+                glm::vec3(0, 0, -1), // front
+                glm::vec3(0, 0, 1), // back
+                glm::vec3(0, -1, 0), // bottom
+                glm::vec3(0, 1, 0), // top
+                glm::vec3(-1, 0, 0), // left
+                glm::vec3(1, 0, 0), // right
+            };
             // Check each block's neighbors to determine which faces should be visible
-            for (int i = 0; i < 6; ++i) { // 6 faces per block
+            for (int i = 0; i < 6; ++i) {
+                // 6 faces per block
                 glm::vec3 faceDirection;
                 std::vector<GLfloat> vertices;
                 std::vector<GLuint> indices;
 
                 // Determine the direction for each face
-                switch (i) {
-                    case 0: faceDirection = glm::vec3(0.0f, 0.0f, 1.0f); break; // Front
-                    case 1: faceDirection = glm::vec3(0.0f, 0.0f, -1.0f); break; // Back
-                    case 2: faceDirection = glm::vec3(1.0f, 0.0f, 0.0f); break; // Right
-                    case 3: faceDirection = glm::vec3(-1.0f, 0.0f, 0.0f); break; // Left
-                    case 4: faceDirection = glm::vec3(0.0f, 1.0f, 0.0f); break; // Top
-                    case 5: faceDirection = glm::vec3(0.0f, -1.0f, 0.0f); break; // Bottom
-                }
+                faceDirection = faceDirections[i];
 
                 // Check if the neighboring block exists or is air (to render the face)
-                glm::vec3 neighborPos = glm::vec3(currentBlock->position.x, currentBlock->position.y, currentBlock->position.z) + faceDirection;
+                //glm::vec3 neighborPos = glm::vec3(currentBlock->position.x, currentBlock->position.y, currentBlock->position.z) + faceDirection;
+                Vec3i neighborPos = currentBlock->position + neighborOffsets[i];
 
                 if (chunk->getBlock(Vec3i(neighborPos.x, neighborPos.y, neighborPos.z)) == nullptr) {
                     // Generate vertices and indices for the visible face
                     int vertexOffset = vertices.size() / 8;
-                    vertices.push_back(currentBlock->position.x - 0.5f); vertices.push_back(currentBlock->position.y - 0.5f); vertices.push_back(currentBlock->position.z - 0.5f);
-                    vertices.push_back(faceDirection.x); vertices.push_back(faceDirection.y); vertices.push_back(faceDirection.z);
-                    vertices.push_back(0.0f); vertices.push_back(0.0f);
 
-                    vertices.push_back(currentBlock->position.x + 0.5f); vertices.push_back(currentBlock->position.y - 0.5f); vertices.push_back(currentBlock->position.z - 0.5f);
-                    vertices.push_back(faceDirection.x); vertices.push_back(faceDirection.y); vertices.push_back(faceDirection.z);
-                    vertices.push_back(1.0f); vertices.push_back(0.0f);
-
-                    vertices.push_back(currentBlock->position.x + 0.5f); vertices.push_back(currentBlock->position.y + 0.5f); vertices.push_back(currentBlock->position.z - 0.5f);
-                    vertices.push_back(faceDirection.x); vertices.push_back(faceDirection.y); vertices.push_back(faceDirection.z);
-                    vertices.push_back(1.0f); vertices.push_back(1.0f);
-
-                    vertices.push_back(currentBlock->position.x - 0.5f); vertices.push_back(currentBlock->position.y + 0.5f); vertices.push_back(currentBlock->position.z - 0.5f);
-                    vertices.push_back(faceDirection.x); vertices.push_back(faceDirection.y); vertices.push_back(faceDirection.z);
-                    vertices.push_back(0.0f); vertices.push_back(1.0f);
+                    // HOLLY CRAP????
+                    if (faceDirection == glm::vec3(0, 0, -1)) {
+                        // front
+                        vertices.push_back(currentBlock->position.x - 0.5f);
+                        vertices.push_back(currentBlock->position.y - 0.5f);
+                        vertices.push_back(currentBlock->position.z - 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(currentBlock->position.x + 0.5f);
+                        vertices.push_back(currentBlock->position.y - 0.5f);
+                        vertices.push_back(currentBlock->position.z - 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(currentBlock->position.x + 0.5f);
+                        vertices.push_back(currentBlock->position.y + 0.5f);
+                        vertices.push_back(currentBlock->position.z - 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(currentBlock->position.x - 0.5f);
+                        vertices.push_back(currentBlock->position.y + 0.5f);
+                        vertices.push_back(currentBlock->position.z - 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(1.0f);
+                    } else if (faceDirection == glm::vec3(0, 0, 1)) {
+                        // back
+                        vertices.push_back(currentBlock->position.x - 0.5f);
+                        vertices.push_back(currentBlock->position.y - 0.5f);
+                        vertices.push_back(currentBlock->position.z + 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(currentBlock->position.x + 0.5f);
+                        vertices.push_back(currentBlock->position.y - 0.5f);
+                        vertices.push_back(currentBlock->position.z + 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(currentBlock->position.x + 0.5f);
+                        vertices.push_back(currentBlock->position.y + 0.5f);
+                        vertices.push_back(currentBlock->position.z + 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(currentBlock->position.x - 0.5f);
+                        vertices.push_back(currentBlock->position.y + 0.5f);
+                        vertices.push_back(currentBlock->position.z + 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(1.0f);
+                    } else if (faceDirection == glm::vec3(0, -1, 0)) {
+                        // bottom
+                        vertices.push_back(currentBlock->position.x - 0.5f);
+                        vertices.push_back(currentBlock->position.y - 0.5f);
+                        vertices.push_back(currentBlock->position.z - 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(currentBlock->position.x + 0.5f);
+                        vertices.push_back(currentBlock->position.y - 0.5f);
+                        vertices.push_back(currentBlock->position.z - 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(currentBlock->position.x + 0.5f);
+                        vertices.push_back(currentBlock->position.y - 0.5f);
+                        vertices.push_back(currentBlock->position.z + 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(currentBlock->position.x - 0.5f);
+                        vertices.push_back(currentBlock->position.y - 0.5f);
+                        vertices.push_back(currentBlock->position.z + 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(1.0f);
+                    } else if (faceDirection == glm::vec3(0, 1, 0)) {
+                        // top
+                        vertices.push_back(currentBlock->position.x - 0.5f);
+                        vertices.push_back(currentBlock->position.y + 0.5f);
+                        vertices.push_back(currentBlock->position.z - 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(currentBlock->position.x + 0.5f);
+                        vertices.push_back(currentBlock->position.y + 0.5f);
+                        vertices.push_back(currentBlock->position.z - 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(currentBlock->position.x + 0.5f);
+                        vertices.push_back(currentBlock->position.y + 0.5f);
+                        vertices.push_back(currentBlock->position.z + 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(currentBlock->position.x - 0.5f);
+                        vertices.push_back(currentBlock->position.y + 0.5f);
+                        vertices.push_back(currentBlock->position.z + 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(1.0f);
+                    } else if (faceDirection == glm::vec3(-1, 0, 0)) {
+                        // left
+                        vertices.push_back(currentBlock->position.x - 0.5f);
+                        vertices.push_back(currentBlock->position.y - 0.5f);
+                        vertices.push_back(currentBlock->position.z - 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(currentBlock->position.x - 0.5f);
+                        vertices.push_back(currentBlock->position.y - 0.5f);
+                        vertices.push_back(currentBlock->position.z + 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(currentBlock->position.x - 0.5f);
+                        vertices.push_back(currentBlock->position.y + 0.5f);
+                        vertices.push_back(currentBlock->position.z + 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(currentBlock->position.x - 0.5f);
+                        vertices.push_back(currentBlock->position.y + 0.5f);
+                        vertices.push_back(currentBlock->position.z - 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(1.0f);
+                    } else if (faceDirection == glm::vec3(1, 0, 0)) {
+                        // right
+                        vertices.push_back(currentBlock->position.x + 0.5f);
+                        vertices.push_back(currentBlock->position.y - 0.5f);
+                        vertices.push_back(currentBlock->position.z - 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(currentBlock->position.x + 0.5f);
+                        vertices.push_back(currentBlock->position.y - 0.5f);
+                        vertices.push_back(currentBlock->position.z + 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(currentBlock->position.x + 0.5f);
+                        vertices.push_back(currentBlock->position.y + 0.5f);
+                        vertices.push_back(currentBlock->position.z + 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(1.0f);
+                        vertices.push_back(currentBlock->position.x + 0.5f);
+                        vertices.push_back(currentBlock->position.y + 0.5f);
+                        vertices.push_back(currentBlock->position.z - 0.5f);
+                        vertices.push_back(faceDirection.x);
+                        vertices.push_back(faceDirection.y);
+                        vertices.push_back(faceDirection.z);
+                        vertices.push_back(0.0f);
+                        vertices.push_back(1.0f);
+                    }
 
                     indices.push_back(vertexOffset + 0);
                     indices.push_back(vertexOffset + 1);
@@ -228,32 +437,35 @@ private:
         cachedBakedChunks.insert(std::make_pair(chunk->hash, bakedChunk));
         return bakedChunk;
     }
+
 public:
-    void renderChunks(std::vector<Chunk*> chunks, Shader *shader) {
+    void renderChunks(std::vector<Chunk *> chunks, Shader *shader) {
         GLuint vao, vbo, ebo;
         glGenVertexArrays(1, &vao);
         glGenBuffers(1, &vbo);
         glGenBuffers(1, &ebo);
 
-        for (const auto &chunk : chunks) {
-            BakedChunk* bakedChunk = bakeChunk(chunk);
+        for (const auto &chunk: chunks) {
+            BakedChunk *bakedChunk = bakeChunk(chunk);
 
             glBindVertexArray(vao);
-            for (const auto &part : bakedChunk->chunkParts) {
+            for (const auto &part: bakedChunk->chunkParts) {
                 glBindVertexArray(vao);
                 glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                glBufferData(GL_ARRAY_BUFFER, part.vertices.size() * sizeof(GLfloat), part.vertices.data(), GL_STATIC_DRAW);
+                glBufferData(GL_ARRAY_BUFFER, part.vertices.size() * sizeof(GLfloat), part.vertices.data(),
+                             GL_STATIC_DRAW);
 
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-                glBufferData(GL_ELEMENT_ARRAY_BUFFER, part.indices.size() * sizeof(GLuint), part.indices.data(), GL_STATIC_DRAW);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, part.indices.size() * sizeof(GLuint), part.indices.data(),
+                             GL_STATIC_DRAW);
 
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) 0);
                 glEnableVertexAttribArray(0);
 
-                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) (3 * sizeof(float)));
                 glEnableVertexAttribArray(1);
 
-                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) (6 * sizeof(float)));
                 glEnableVertexAttribArray(2);
 
                 glm::vec3 pos = {chunk->position.x, chunk->position.y, chunk->position.z};
@@ -272,14 +484,14 @@ public:
 
 int main() {
     SDL_Init(SDL_INIT_VIDEO);
-    SDL_Window *window = SDL_CreateWindow("Chunk Rendering", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1400, 900, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    SDL_Window *window = SDL_CreateWindow("Chunk Rendering", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1400, 900,
+                                          SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
     SDL_GLContext context = SDL_GL_CreateContext(window);
 
     glewExperimental = GL_TRUE;
     glewInit();
 
-    Image *cobblestoneImage = Image::load("cobblestone");
-    {
+    Image *cobblestoneImage = Image::load("cobblestone"); {
         GLint textureID = 0;
         GLenum format;
         if (cobblestoneImage->nrComponents == 1)
@@ -289,7 +501,8 @@ int main() {
         else if (cobblestoneImage->nrComponents == 4)
             format = GL_RGBA;
         glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, cobblestoneImage->width, cobblestoneImage->height, 0, format, GL_UNSIGNED_BYTE, cobblestoneImage->raw);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, cobblestoneImage->width, cobblestoneImage->height, 0, format,
+                     GL_UNSIGNED_BYTE, cobblestoneImage->raw);
         glGenerateMipmap(GL_TEXTURE_2D);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -302,6 +515,8 @@ int main() {
 
     Shader *shader = Shader::load("cube");
 
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
     glEnable(GL_DEPTH_TEST);
 
     auto *chunksRenderer = new ChunksRenderer();
@@ -325,7 +540,7 @@ int main() {
             processMouseMotion(event, camera_front);
         }
 
-        const Uint8* state = SDL_GetKeyboardState(NULL);
+        const Uint8 *state = SDL_GetKeyboardState(NULL);
         float camera_speed = 0.1f;
         if (state[SDL_SCANCODE_W]) camera_pos += camera_speed * camera_front;
         if (state[SDL_SCANCODE_S]) camera_pos -= camera_speed * camera_front;
