@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 project(crafteria)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 find_package(OpenGL REQUIRED COMPONENTS OpenGL)
 
@@ -14,5 +14,9 @@ include_directories(${GLEW_INCLUDE_DIRS})
 find_package(glm REQUIRED)
 include_directories(${glm_INCLUDE_DIRS})
 
-add_executable(crafteria client/main.cpp)
+add_executable(crafteria
+        client/Shader.cpp
+        client/Image.cpp
+        client/main.cpp
+)
 target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} OpenGL::GL)
