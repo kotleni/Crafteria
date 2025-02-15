@@ -10,6 +10,7 @@
 
 #include "Shader.h"
 #include "Image.h"
+#include "PerlinNoise.h"
 
 #define CHUNK_SIZE_XYZ 16
 
@@ -78,18 +79,34 @@ public:
 };
 
 class World {
+private:
+    siv::PerlinNoise perlin;
 public:
+    int seedValue;
     std::vector<Chunk *> chunks;
 
+    World(int seedValue) {
+        this->seedValue = seedValue;
+        this->perlin = siv::PerlinNoise(seedValue);
+    }
+
+
     void generateFilledChunk(Vec3i pos) {
-        Chunk *chunk = new Chunk(pos);
+        Chunk* chunk = new Chunk(pos);
         this->chunks.push_back(chunk);
 
         for (int x = 0; x < CHUNK_SIZE_XYZ; ++x) {
-            for (int y = 0; y < CHUNK_SIZE_XYZ; ++y) {
-                for (int z = 0; z < CHUNK_SIZE_XYZ; ++z) {
-                    chunk->setBlock(1, {x, y, z});
-                }
+            for (int z = 0; z < CHUNK_SIZE_XYZ; ++z) {
+                float scale = 0.005;
+                int octaves = 6;
+                double yMod = perlin.octave2D_01(
+                    ((pos.x * CHUNK_SIZE_XYZ) + x) * scale,
+                    ((pos.z * CHUNK_SIZE_XYZ) * z) * scale,
+                    octaves
+                    );
+                int y = yMod * 3;
+
+                chunk->setBlock(1, {x, y, z});
             }
         }
     }
@@ -499,7 +516,9 @@ int main() {
     glEnable(GL_DEPTH_TEST);
 
     auto *chunksRenderer = new ChunksRenderer();
-    auto *world = new World();
+    auto *world = new World(SDL_GetTicks());
+    int x = 0;
+    int z = 0;
     world->generateFilledChunk({0, 0, 0});
 
     glm::vec3 camera_pos(8.0f, 8.0f, 20.0f);
@@ -517,6 +536,19 @@ int main() {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
             processMouseMotion(event, camera_front);
+
+            if (event.type == SDL_KEYDOWN) {
+                switch (event.key.keysym.sym) {
+                    case SDLK_r:
+                        x+=1;
+                    if (x >= 4) {
+                        x = 0;
+                        z+=1;
+                    }
+                        world->generateFilledChunk({x, 0, z});
+                        break;
+                }
+            }
         }
 
         const Uint8 *state = SDL_GetKeyboardState(NULL);
