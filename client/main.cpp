@@ -485,7 +485,8 @@ int main() {
     glewExperimental = GL_TRUE;
     glewInit();
 
-    Image *cobblestoneImage = Image::load("cobblestone"); {
+    Image *cobblestoneImage = Image::load("dirt");
+    {
         GLint textureID = 0;
         GLenum format;
         if (cobblestoneImage->nrComponents == 1)
