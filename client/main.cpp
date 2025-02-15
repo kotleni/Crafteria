@@ -61,7 +61,7 @@ public:
             }
         }
 
-        blocks.push_back(new Block(pos));
+        blocks.push_back(new Block(pos, id));
     }
 
     Block *getBlock(Vec3i pos) {
@@ -103,6 +103,9 @@ public:
                 int y = yMod * 3;
 
                 chunk->setBlock(1, {x, y, z});
+                for (int a = 1; a < 16; a++) {
+                    chunk->setBlock(3, {x, y - a, z});
+                }
             }
         }
     }
@@ -192,8 +195,9 @@ private:
                 // Check if the neighboring block exists or is air (to render the face)
                 //glm::vec3 neighborPos = glm::vec3(currentBlock->position.x, currentBlock->position.y, currentBlock->position.z) + faceDirection;
                 Vec3i neighborPos = currentBlock->position + neighborOffsets[i];
+                Block* neighborBlock = chunk->getBlock(Vec3i(neighborPos.x, neighborPos.y, neighborPos.z));
 
-                if (chunk->getBlock(Vec3i(neighborPos.x, neighborPos.y, neighborPos.z)) == nullptr) {
+                if (neighborBlock == nullptr) {
                     // Generate vertices and indices for the visible face
                     int vertexOffset = vertices.size() / 8;
 
@@ -469,25 +473,21 @@ public:
                 shader->use();
                 shader->setMat4("model", model);
 
+                if (part.blockID <= 0) {
+                    std::cout << "Panic! Wrong blockID: " << part.blockID << std::endl;
+                    SDL_Quit();
+                    for (;;){ SDL_Delay(1000); }
+                }
+                glBindTexture(GL_TEXTURE_2D, part.blockID - 1);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, 0);
             }
         }
     }
 };
 
-
-int main() {
-    SDL_Init(SDL_INIT_VIDEO);
-    SDL_Window *window = SDL_CreateWindow("Chunk Rendering", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1400, 900,
-                                          SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-    SDL_GLContext context = SDL_GL_CreateContext(window);
-
-    glewExperimental = GL_TRUE;
-    glewInit();
-
-    Image *cobblestoneImage = Image::load("dirt");
+void loadImageToGPU(std::string fileName, GLuint textureID) {
+    Image *cobblestoneImage = Image::load(fileName);
     {
-        GLint textureID = 0;
         GLenum format;
         if (cobblestoneImage->nrComponents == 1)
             format = GL_RED;
@@ -507,6 +507,20 @@ int main() {
     }
     stbi_image_free(cobblestoneImage->raw);
     delete cobblestoneImage;
+}
+
+int main() {
+    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Window *window = SDL_CreateWindow("Chunk Rendering", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1400, 900,
+                                          SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    SDL_GLContext context = SDL_GL_CreateContext(window);
+
+    glewExperimental = GL_TRUE;
+    glewInit();
+
+    loadImageToGPU("dirt", 0);
+    loadImageToGPU("grass", 1);
+    loadImageToGPU("cobblestone", 2);
 
     Shader *shader = Shader::load("cube");
 
