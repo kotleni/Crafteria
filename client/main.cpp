@@ -515,8 +515,10 @@ int main() {
 
     Shader *shader = Shader::load("cube");
 
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+    // TODO
+    // glEnable(GL_CULL_FACE);
+    // glCullFace(GL_BACK);
+
     glEnable(GL_DEPTH_TEST);
 
     auto *chunksRenderer = new ChunksRenderer();
