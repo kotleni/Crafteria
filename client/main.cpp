@@ -81,6 +81,12 @@ public:
             }
         }
     }
+
+    void setBlock(BlockID id, Vec3i pos) {
+        for (Chunk *chunk : this->chunks) {
+            chunk->setBlock(id, pos);
+        }
+    }
 };
 
 GLfloat cube_vertices[] = {
@@ -128,6 +134,26 @@ void processMouseMotion(SDL_Event &event, glm::vec3 &camera_front) {
         camera_front = glm::normalize(front);
     }
 }
+
+/**
+ * Cached chunks renderer
+ */
+class ChunksRenderer {
+    public:
+        void renderChunks(std::vector<Chunk*> chunks, Shader *shader) {
+            for (const auto &chunk : chunks) {
+                for (const auto &block : chunk->blocks) {
+                    glm::vec3 pos = {block->position.x, block->position.y, block->position.z};
+                    glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
+
+                    shader->use();
+                    shader->setMat4("model", model);
+
+                    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+                }
+            }
+        }
+};
 
 int main() {
     SDL_Init(SDL_INIT_VIDEO);
@@ -184,6 +210,7 @@ int main() {
 
     glEnable(GL_DEPTH_TEST);
 
+    auto *chunksRenderer = new ChunksRenderer();
     auto *world = new World();
     world->generateFilledChunk({0, 0, 0});
 
@@ -218,17 +245,7 @@ int main() {
         shader->setMat4("projection", projection);
 
         glBindVertexArray(vao);
-        for (const auto &chunk : world->chunks) {
-            for (const auto &block : chunk->blocks) {
-                glm::vec3 pos = {block->position.x, block->position.y, block->position.z};
-                glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
-
-                shader->use();
-                shader->setMat4("model", model);
-
-                glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-            }
-        }
+        chunksRenderer->renderChunks(world->chunks, shader);
         SDL_GL_SwapWindow(window);
     }
     SDL_Quit();
