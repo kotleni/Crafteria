@@ -11,6 +11,7 @@
 #include "Shader.h"
 #include "Image.h"
 #include "PerlinNoise.h"
+#include "Math/Vec3i.h"
 
 #define CHUNK_SIZE_XYZ 16
 #define CHUNK_RENDERING_DISTANCE (2 * CHUNK_SIZE_XYZ)
@@ -29,38 +30,6 @@ struct Clock
 };
 
 Clock globalClock;
-
-class Vec3i {
-public:
-    Vec3i(int x, int y, int z) {
-        this->x = x;
-        this->y = y;
-        this->z = z;
-    }
-
-    bool operator==(const Vec3i &other) const {
-        return this->x == other.x && this->y == other.y && this->z == other.z;
-    }
-
-    Vec3i operator+(const Vec3i &other) const {
-        return {this->x + other.x, this->y + other.y, this->z + other.z};
-    }
-
-    [[nodiscard]] double distanceTo(const Vec3i& vec3_i) const {
-        int dx = this->x - vec3_i.x;
-        int dy = this->y - vec3_i.y;
-        int dz = this->z - vec3_i.z;
-        return std::sqrt(dx * dx + dy * dy + dz * dz);
-    }
-
-    Vec3i operator*(int i) const {
-        return {this->x * i, this->y * i, this->z * i};
-    }
-
-    int x;
-    int y;
-    int z;
-};
 
 typedef int BlockID;
 

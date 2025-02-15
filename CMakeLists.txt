@@ -15,6 +15,7 @@ find_package(glm REQUIRED)
 include_directories(${glm_INCLUDE_DIRS})
 
 add_executable(crafteria
+        client/Math/Vec3i.cpp
         client/Shader.cpp
         client/Image.cpp
         client/main.cpp
