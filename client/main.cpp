@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include <iostream>
+#include <unordered_map>
 
 #include "Shader.h"
 #include "Image.h"
@@ -36,10 +37,16 @@ public:
     BlockID id;
 };
 
+// TODO: Replace with real hash
+int fakeHashIndex = 0;
+
 class Chunk {
 public:
-    Chunk(Vec3i position): position(position) { }
+    Chunk(Vec3i position): position(position) {
+        this->hash = fakeHashIndex++;
+    }
 
+    int hash = -1;
     Vec3i position;
 
     std::vector<Block*> blocks;
@@ -135,25 +142,133 @@ void processMouseMotion(SDL_Event &event, glm::vec3 &camera_front) {
     }
 }
 
+struct BakedChunkPart {
+    std::vector<GLfloat> vertices;
+    std::vector<GLuint> indices;
+    BlockID blockID;
+};
+
+struct BakedChunk {
+    std::vector<BakedChunkPart> chunkParts;
+};
+
 /**
  * Cached chunks renderer
  */
 class ChunksRenderer {
-    public:
-        void renderChunks(std::vector<Chunk*> chunks, Shader *shader) {
-            for (const auto &chunk : chunks) {
-                for (const auto &block : chunk->blocks) {
-                    glm::vec3 pos = {block->position.x, block->position.y, block->position.z};
-                    glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
+private:
+    std::pmr::unordered_map<int, BakedChunk*> cachedBakedChunks;
 
-                    shader->use();
-                    shader->setMat4("model", model);
+    BakedChunk* bakeChunk(Chunk* chunk) {
+        if (cachedBakedChunks.contains(chunk->hash)) {
+            return cachedBakedChunks.at(chunk->hash);
+        }
+        auto bakedChunk = new BakedChunk();
 
-                    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        for (const auto& block : chunk->blocks) {
+            Block* currentBlock = block;
+            // Check each block's neighbors to determine which faces should be visible
+            for (int i = 0; i < 6; ++i) { // 6 faces per block
+                glm::vec3 faceDirection;
+                std::vector<GLfloat> vertices;
+                std::vector<GLuint> indices;
+
+                // Determine the direction for each face
+                switch (i) {
+                    case 0: faceDirection = glm::vec3(0.0f, 0.0f, 1.0f); break; // Front
+                    case 1: faceDirection = glm::vec3(0.0f, 0.0f, -1.0f); break; // Back
+                    case 2: faceDirection = glm::vec3(1.0f, 0.0f, 0.0f); break; // Right
+                    case 3: faceDirection = glm::vec3(-1.0f, 0.0f, 0.0f); break; // Left
+                    case 4: faceDirection = glm::vec3(0.0f, 1.0f, 0.0f); break; // Top
+                    case 5: faceDirection = glm::vec3(0.0f, -1.0f, 0.0f); break; // Bottom
+                }
+
+                // Check if the neighboring block exists or is air (to render the face)
+                glm::vec3 neighborPos = glm::vec3(currentBlock->position.x, currentBlock->position.y, currentBlock->position.z) + faceDirection;
+
+                if (chunk->getBlock(Vec3i(neighborPos.x, neighborPos.y, neighborPos.z)) == nullptr) {
+                    // Generate vertices and indices for the visible face
+                    int vertexOffset = vertices.size() / 8;
+                    vertices.push_back(currentBlock->position.x - 0.5f); vertices.push_back(currentBlock->position.y - 0.5f); vertices.push_back(currentBlock->position.z - 0.5f);
+                    vertices.push_back(faceDirection.x); vertices.push_back(faceDirection.y); vertices.push_back(faceDirection.z);
+                    vertices.push_back(0.0f); vertices.push_back(0.0f);
+
+                    vertices.push_back(currentBlock->position.x + 0.5f); vertices.push_back(currentBlock->position.y - 0.5f); vertices.push_back(currentBlock->position.z - 0.5f);
+                    vertices.push_back(faceDirection.x); vertices.push_back(faceDirection.y); vertices.push_back(faceDirection.z);
+                    vertices.push_back(1.0f); vertices.push_back(0.0f);
+
+                    vertices.push_back(currentBlock->position.x + 0.5f); vertices.push_back(currentBlock->position.y + 0.5f); vertices.push_back(currentBlock->position.z - 0.5f);
+                    vertices.push_back(faceDirection.x); vertices.push_back(faceDirection.y); vertices.push_back(faceDirection.z);
+                    vertices.push_back(1.0f); vertices.push_back(1.0f);
+
+                    vertices.push_back(currentBlock->position.x - 0.5f); vertices.push_back(currentBlock->position.y + 0.5f); vertices.push_back(currentBlock->position.z - 0.5f);
+                    vertices.push_back(faceDirection.x); vertices.push_back(faceDirection.y); vertices.push_back(faceDirection.z);
+                    vertices.push_back(0.0f); vertices.push_back(1.0f);
+
+                    indices.push_back(vertexOffset + 0);
+                    indices.push_back(vertexOffset + 1);
+                    indices.push_back(vertexOffset + 2);
+                    indices.push_back(vertexOffset + 2);
+                    indices.push_back(vertexOffset + 3);
+                    indices.push_back(vertexOffset + 0);
+                }
+
+                // If there are vertices and indices for this face, create a part and add it to the baked chunk
+                if (!vertices.empty() && !indices.empty()) {
+                    BakedChunkPart part;
+                    part.vertices = std::move(vertices);
+                    part.indices = std::move(indices);
+                    part.blockID = currentBlock->id;
+                    bakedChunk->chunkParts.push_back(part);
                 }
             }
         }
+
+        std::cout << "Baked new chunk " << chunk->hash << std::endl;
+        cachedBakedChunks.insert(std::make_pair(chunk->hash, bakedChunk));
+        return bakedChunk;
+    }
+public:
+    void renderChunks(std::vector<Chunk*> chunks, Shader *shader) {
+        GLuint vao, vbo, ebo;
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glGenBuffers(1, &ebo);
+
+        for (const auto &chunk : chunks) {
+            BakedChunk* bakedChunk = bakeChunk(chunk);
+
+            glBindVertexArray(vao);
+            for (const auto &part : bakedChunk->chunkParts) {
+                glBindVertexArray(vao);
+                glBindBuffer(GL_ARRAY_BUFFER, vbo);
+                glBufferData(GL_ARRAY_BUFFER, part.vertices.size() * sizeof(GLfloat), part.vertices.data(), GL_STATIC_DRAW);
+
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, part.indices.size() * sizeof(GLuint), part.indices.data(), GL_STATIC_DRAW);
+
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+                glEnableVertexAttribArray(0);
+
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+                glEnableVertexAttribArray(1);
+
+                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+                glEnableVertexAttribArray(2);
+
+                glm::vec3 pos = {chunk->position.x, chunk->position.y, chunk->position.z};
+                pos *= CHUNK_SIZE_XYZ; // Scale chunk pos
+                glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
+
+                shader->use();
+                shader->setMat4("model", model);
+
+                glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, 0);
+            }
+        }
+    }
 };
+
 
 int main() {
     SDL_Init(SDL_INIT_VIDEO);
@@ -186,27 +301,6 @@ int main() {
     delete cobblestoneImage;
 
     Shader *shader = Shader::load("cube");
-
-    GLuint vao, vbo, ebo;
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
-
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_indices), cube_indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -244,7 +338,7 @@ int main() {
         shader->setMat4("view", view);
         shader->setMat4("projection", projection);
 
-        glBindVertexArray(vao);
+        // glBindVertexArray(vao);
         chunksRenderer->renderChunks(world->chunks, shader);
         SDL_GL_SwapWindow(window);
     }
