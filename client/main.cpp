@@ -550,7 +550,7 @@ int main() {
         if (state[SDL_SCANCODE_D]) camera_pos += glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
 
         glm::mat4 view = glm::lookAt(camera_pos, camera_pos + camera_front, camera_up);
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(75.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
         shader->setMat4("view", view);
         shader->setMat4("projection", projection);
