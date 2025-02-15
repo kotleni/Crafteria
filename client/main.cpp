@@ -437,7 +437,6 @@ public:
 
         for (const auto &chunk: chunks) {
             double distance = (chunk->position * CHUNK_SIZE_XYZ).distanceTo(playerPos);
-            std::cout << distance << std::endl;
             if (distance > CHUNK_RENDERING_DISTANCE) {
                 continue;
             }
