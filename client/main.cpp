@@ -157,6 +157,47 @@ class ChunksRenderer {
 private:
     std::pmr::unordered_map<int, BakedChunk *> cachedBakedChunks;
 
+    Vec3i neighborOffsets[6] = {
+        Vec3i(0, 0, -1), // front
+        Vec3i(0, 0, 1), // back
+        Vec3i(0, -1, 0), // bottom
+        Vec3i(0, 1, 0), // top
+        Vec3i(-1, 0, 0), // left
+        Vec3i(1, 0, 0), // right
+    };
+
+    glm::vec3 faceDirections[6] = {
+        glm::vec3(0, 0, -1), // front
+        glm::vec3(0, 0, 1), // back
+        glm::vec3(0, -1, 0), // bottom
+        glm::vec3(0, 1, 0), // top
+        glm::vec3(-1, 0, 0), // left
+        glm::vec3(1, 0, 0), // right
+    };
+
+    void addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices, Block *currentBlock, glm::vec3 faceDirection, glm::vec3 offsets[]) {
+        glm::vec2 localOffsets[] = {
+            glm::vec2(0, 0),
+            glm::vec2(1, 0),
+            glm::vec2(1, 1),
+            glm::vec2(0, 1)
+        };
+
+        for (int i = 0; i < sizeof(localOffsets); i++) {
+            glm::vec2 localOffset = localOffsets[i];
+            glm::vec3 offset = offsets[i];
+
+            vertices->push_back(currentBlock->position.x + (0.5f * offset.x));
+            vertices->push_back(currentBlock->position.y + (0.5f * offset.y));
+            vertices->push_back(currentBlock->position.z + (0.5f * offset.z));
+            vertices->push_back(faceDirection.x);
+            vertices->push_back(faceDirection.y);
+            vertices->push_back(faceDirection.z);
+            vertices->push_back(localOffset.x);
+            vertices->push_back(localOffset.y);
+        }
+    }
+
     BakedChunk *bakeChunk(Chunk *chunk) {
         if (cachedBakedChunks.contains(chunk->hash)) {
             return cachedBakedChunks.at(chunk->hash);
@@ -165,35 +206,14 @@ private:
 
         for (const auto &block: chunk->blocks) {
             Block *currentBlock = block;
-            Vec3i neighborOffsets[] = {
-                Vec3i(0, 0, -1), // front
-                Vec3i(0, 0, 1), // back
-                Vec3i(0, -1, 0), // bottom
-                Vec3i(0, 1, 0), // top
-                Vec3i(-1, 0, 0), // left
-                Vec3i(1, 0, 0), // right
-            };
-
-            glm::vec3 faceDirections[] = {
-                glm::vec3(0, 0, -1), // front
-                glm::vec3(0, 0, 1), // back
-                glm::vec3(0, -1, 0), // bottom
-                glm::vec3(0, 1, 0), // top
-                glm::vec3(-1, 0, 0), // left
-                glm::vec3(1, 0, 0), // right
-            };
             // Check each block's neighbors to determine which faces should be visible
             for (int i = 0; i < 6; ++i) {
                 // 6 faces per block
-                glm::vec3 faceDirection;
+                glm::vec3 faceDirection = faceDirections[i];
                 std::vector<GLfloat> vertices;
                 std::vector<GLuint> indices;
 
-                // Determine the direction for each face
-                faceDirection = faceDirections[i];
-
                 // Check if the neighboring block exists or is air (to render the face)
-                //glm::vec3 neighborPos = glm::vec3(currentBlock->position.x, currentBlock->position.y, currentBlock->position.z) + faceDirection;
                 Vec3i neighborPos = currentBlock->position + neighborOffsets[i];
                 Block* neighborBlock = chunk->getBlock(Vec3i(neighborPos.x, neighborPos.y, neighborPos.z));
 
@@ -201,211 +221,54 @@ private:
                     // Generate vertices and indices for the visible face
                     int vertexOffset = vertices.size() / 8;
 
-                    // HOLLY CRAP????
                     if (faceDirection == glm::vec3(0, 0, -1)) {
-                        // front
-                        vertices.push_back(currentBlock->position.x - 0.5f);
-                        vertices.push_back(currentBlock->position.y - 0.5f);
-                        vertices.push_back(currentBlock->position.z - 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(currentBlock->position.x + 0.5f);
-                        vertices.push_back(currentBlock->position.y - 0.5f);
-                        vertices.push_back(currentBlock->position.z - 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(currentBlock->position.x + 0.5f);
-                        vertices.push_back(currentBlock->position.y + 0.5f);
-                        vertices.push_back(currentBlock->position.z - 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(currentBlock->position.x - 0.5f);
-                        vertices.push_back(currentBlock->position.y + 0.5f);
-                        vertices.push_back(currentBlock->position.z - 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(1.0f);
+                        glm::vec3 offsets[] = {
+                            glm::vec3(-1, -1, -1),
+                            glm::vec3(1, -1, -1),
+                            glm::vec3(1, 1, -1),
+                            glm::vec3(-1, 1, -1)
+                        };
+                        addFace(&vertices, &indices, currentBlock, faceDirection, offsets);
                     } else if (faceDirection == glm::vec3(0, 0, 1)) {
-                        // back
-                        vertices.push_back(currentBlock->position.x - 0.5f);
-                        vertices.push_back(currentBlock->position.y - 0.5f);
-                        vertices.push_back(currentBlock->position.z + 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(currentBlock->position.x + 0.5f);
-                        vertices.push_back(currentBlock->position.y - 0.5f);
-                        vertices.push_back(currentBlock->position.z + 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(currentBlock->position.x + 0.5f);
-                        vertices.push_back(currentBlock->position.y + 0.5f);
-                        vertices.push_back(currentBlock->position.z + 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(currentBlock->position.x - 0.5f);
-                        vertices.push_back(currentBlock->position.y + 0.5f);
-                        vertices.push_back(currentBlock->position.z + 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(1.0f);
+                        glm::vec3 offsets[] = {
+                            glm::vec3(-1, -1, 1),
+                            glm::vec3(1, -1, 1),
+                            glm::vec3(1, 1, 1),
+                            glm::vec3(-1, 1, 1)
+                        };
+                        addFace(&vertices, &indices, currentBlock, faceDirection, offsets);
                     } else if (faceDirection == glm::vec3(0, -1, 0)) {
-                        // bottom
-                        vertices.push_back(currentBlock->position.x - 0.5f);
-                        vertices.push_back(currentBlock->position.y - 0.5f);
-                        vertices.push_back(currentBlock->position.z - 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(currentBlock->position.x + 0.5f);
-                        vertices.push_back(currentBlock->position.y - 0.5f);
-                        vertices.push_back(currentBlock->position.z - 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(currentBlock->position.x + 0.5f);
-                        vertices.push_back(currentBlock->position.y - 0.5f);
-                        vertices.push_back(currentBlock->position.z + 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(currentBlock->position.x - 0.5f);
-                        vertices.push_back(currentBlock->position.y - 0.5f);
-                        vertices.push_back(currentBlock->position.z + 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(1.0f);
+                        glm::vec3 offsets[] = {
+                            glm::vec3(-1, -1, -1),
+                            glm::vec3(1, -1, -1),
+                            glm::vec3(1, -1, 1),
+                            glm::vec3(-1, -1, 1),
+                        };
+                        addFace(&vertices, &indices, currentBlock, faceDirection, offsets);
                     } else if (faceDirection == glm::vec3(0, 1, 0)) {
-                        // top
-                        vertices.push_back(currentBlock->position.x - 0.5f);
-                        vertices.push_back(currentBlock->position.y + 0.5f);
-                        vertices.push_back(currentBlock->position.z - 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(currentBlock->position.x + 0.5f);
-                        vertices.push_back(currentBlock->position.y + 0.5f);
-                        vertices.push_back(currentBlock->position.z - 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(currentBlock->position.x + 0.5f);
-                        vertices.push_back(currentBlock->position.y + 0.5f);
-                        vertices.push_back(currentBlock->position.z + 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(currentBlock->position.x - 0.5f);
-                        vertices.push_back(currentBlock->position.y + 0.5f);
-                        vertices.push_back(currentBlock->position.z + 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(1.0f);
+                        glm::vec3 offsets[] = {
+                            glm::vec3(-1, 1, -1),
+                            glm::vec3(1, 1, -1),
+                            glm::vec3(1, 1, 1),
+                            glm::vec3(-1, 1, 1),
+                        };
+                        addFace(&vertices, &indices, currentBlock, faceDirection, offsets);
                     } else if (faceDirection == glm::vec3(-1, 0, 0)) {
-                        // left
-                        vertices.push_back(currentBlock->position.x - 0.5f);
-                        vertices.push_back(currentBlock->position.y - 0.5f);
-                        vertices.push_back(currentBlock->position.z - 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(currentBlock->position.x - 0.5f);
-                        vertices.push_back(currentBlock->position.y - 0.5f);
-                        vertices.push_back(currentBlock->position.z + 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(currentBlock->position.x - 0.5f);
-                        vertices.push_back(currentBlock->position.y + 0.5f);
-                        vertices.push_back(currentBlock->position.z + 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(currentBlock->position.x - 0.5f);
-                        vertices.push_back(currentBlock->position.y + 0.5f);
-                        vertices.push_back(currentBlock->position.z - 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(1.0f);
+                        glm::vec3 offsets[] = {
+                            glm::vec3(-1, -1, -1),
+                            glm::vec3(-1, -1, 1),
+                            glm::vec3(-1, 1, 1),
+                            glm::vec3(-1, 1, -1),
+                        };
+                        addFace(&vertices, &indices, currentBlock, faceDirection, offsets);
                     } else if (faceDirection == glm::vec3(1, 0, 0)) {
-                        // right
-                        vertices.push_back(currentBlock->position.x + 0.5f);
-                        vertices.push_back(currentBlock->position.y - 0.5f);
-                        vertices.push_back(currentBlock->position.z - 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(currentBlock->position.x + 0.5f);
-                        vertices.push_back(currentBlock->position.y - 0.5f);
-                        vertices.push_back(currentBlock->position.z + 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(currentBlock->position.x + 0.5f);
-                        vertices.push_back(currentBlock->position.y + 0.5f);
-                        vertices.push_back(currentBlock->position.z + 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(1.0f);
-                        vertices.push_back(currentBlock->position.x + 0.5f);
-                        vertices.push_back(currentBlock->position.y + 0.5f);
-                        vertices.push_back(currentBlock->position.z - 0.5f);
-                        vertices.push_back(faceDirection.x);
-                        vertices.push_back(faceDirection.y);
-                        vertices.push_back(faceDirection.z);
-                        vertices.push_back(0.0f);
-                        vertices.push_back(1.0f);
+                        glm::vec3 offsets[] = {
+                            glm::vec3(1, -1, -1),
+                            glm::vec3(1, -1, 1),
+                            glm::vec3(1, 1, 1),
+                            glm::vec3(1, 1, -1),
+                        };
+                        addFace(&vertices, &indices, currentBlock, faceDirection, offsets);
                     }
 
                     indices.push_back(vertexOffset + 0);
