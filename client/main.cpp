@@ -13,6 +13,7 @@
 #include "PerlinNoise.h"
 
 #define CHUNK_SIZE_XYZ 16
+#define CHUNK_RENDERING_DISTANCE (2 * CHUNK_SIZE_XYZ)
 
 class Vec3i {
 public:
@@ -28,6 +29,17 @@ public:
 
     Vec3i operator+(const Vec3i &other) const {
         return {this->x + other.x, this->y + other.y, this->z + other.z};
+    }
+
+    [[nodiscard]] double distanceTo(const Vec3i& vec3_i) const {
+        int dx = this->x - vec3_i.x;
+        int dy = this->y - vec3_i.y;
+        int dz = this->z - vec3_i.z;
+        return std::sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    Vec3i operator*(int i) const {
+        return {this->x * i, this->y * i, this->z * i};
     }
 
     int x;
@@ -433,13 +445,18 @@ private:
     }
 
 public:
-    void renderChunks(std::vector<Chunk *> chunks, Shader *shader) {
+    void renderChunks(std::vector<Chunk *> chunks, Shader *shader, Vec3i playerPos) {
         GLuint vao, vbo, ebo;
         glGenVertexArrays(1, &vao);
         glGenBuffers(1, &vbo);
         glGenBuffers(1, &ebo);
 
         for (const auto &chunk: chunks) {
+            double distance = (chunk->position * CHUNK_SIZE_XYZ).distanceTo(playerPos);
+            std::cout << distance << std::endl;
+            if (distance > CHUNK_RENDERING_DISTANCE) {
+                continue;
+            }
             BakedChunk *bakedChunk = bakeChunk(chunk);
 
             glBindVertexArray(vao);
@@ -568,7 +585,8 @@ int main() {
         shader->setVec3("viewPos", camera_pos);
 
         // glBindVertexArray(vao);
-        chunksRenderer->renderChunks(world->chunks, shader);
+        Vec3i playerPos = {static_cast<int>(camera_pos.x), static_cast<int>(camera_pos.y), static_cast<int>(camera_pos.z)};
+        chunksRenderer->renderChunks(world->chunks, shader, playerPos);
         SDL_GL_SwapWindow(window);
     }
     SDL_Quit();
