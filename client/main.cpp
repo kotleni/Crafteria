@@ -554,6 +554,8 @@ int main() {
 
         shader->setMat4("view", view);
         shader->setMat4("projection", projection);
+        shader->setVec3("lightPos", glm::vec3(10.0f, 10.0f, 10.0f));
+        shader->setVec3("viewPos", camera_pos);
 
         // glBindVertexArray(vao);
         chunksRenderer->renderChunks(world->chunks, shader);
