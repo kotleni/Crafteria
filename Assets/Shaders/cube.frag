@@ -15,7 +15,7 @@ void main() {
     vec3 lightDir = normalize(lightPos - FragPos);
 
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 ambient = 0.7 * vec3(1.0, 1.0, 1.0);
+    vec3 ambient = 0.3 * vec3(1.0, 1.0, 1.0);
 
     vec4 rgba = texture(ourTexture, TexCoord);
     vec3 color = vec3(rgba.x, rgba.y, rgba.z);
