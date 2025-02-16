@@ -20,7 +20,7 @@ void main() {
     vec4 rgba = texture(ourTexture, TexCoord);
     vec3 color = vec3(rgba.x, rgba.y, rgba.z);
 
-    vec3 result = (ambient + diff) * color;
+    vec3 result = color; // (ambient + diff) * color;
 
     FragColor = vec4(result, 1.0);
 }
