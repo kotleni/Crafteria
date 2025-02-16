@@ -135,9 +135,11 @@ void World::generateFilledChunk(Vec3i pos) {
 
 Block *World::getBlock(Vec3i worldPos) {
     for (Chunk *chunk : this->chunks) {
-        Block *block = chunk->getBlock(worldPos);
-        if (block != nullptr)
-            return block;
+        if (chunk->isBlockInBounds(worldPos)) {
+            Block *block = chunk->getBlock(worldPos);
+            if (block != nullptr)
+                return block;
+        }
     }
     return nullptr;
 }
