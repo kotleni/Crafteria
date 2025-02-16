@@ -14,7 +14,7 @@
 #include "Math/Vec3i.h"
 
 #define CHUNK_SIZE_XYZ 16
-#define CHUNK_RENDERING_DISTANCE (2 * CHUNK_SIZE_XYZ)
+#define CHUNK_RENDERING_DISTANCE (4 * CHUNK_SIZE_XYZ)
 
 struct Clock
 {
@@ -144,6 +144,7 @@ struct BakedChunkPart {
     std::vector<GLfloat> vertices;
     std::vector<GLuint> indices;
     BlockID blockID;
+    GLuint vao, vbo, ebo;
 };
 
 struct BakedChunk {
@@ -285,6 +286,29 @@ private:
                     part.vertices = std::move(vertices);
                     part.indices = std::move(indices);
                     part.blockID = currentBlock->id;
+
+                    glGenVertexArrays(1, &part.vao);
+                    glGenBuffers(1, &part.vbo);
+                    glGenBuffers(1, &part.ebo);
+
+                    glBindVertexArray(part.vao);
+                    glBindBuffer(GL_ARRAY_BUFFER, part.vbo);
+                    glBufferData(GL_ARRAY_BUFFER, part.vertices.size() * sizeof(GLfloat), part.vertices.data(),
+                                 GL_STATIC_DRAW);
+
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, part.ebo);
+                    glBufferData(GL_ELEMENT_ARRAY_BUFFER, part.indices.size() * sizeof(GLuint), part.indices.data(),
+                                 GL_STATIC_DRAW);
+
+                    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) 0);
+                    glEnableVertexAttribArray(0);
+
+                    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) (3 * sizeof(float)));
+                    glEnableVertexAttribArray(1);
+
+                    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) (6 * sizeof(float)));
+                    glEnableVertexAttribArray(2);
+
                     bakedChunk->chunkParts.push_back(part);
                 }
             }
@@ -296,12 +320,11 @@ private:
     }
 
 public:
-    void renderChunks(std::vector<Chunk *> chunks, Shader *shader, Vec3i playerPos) {
-        GLuint vao, vbo, ebo;
-        glGenVertexArrays(1, &vao);
-        glGenBuffers(1, &vbo);
-        glGenBuffers(1, &ebo);
+    ChunksRenderer() {
 
+    }
+
+    void renderChunks(std::vector<Chunk *> chunks, Shader *shader, Vec3i playerPos) {
         for (const auto &chunk: chunks) {
             double distance = (chunk->position * CHUNK_SIZE_XYZ).distanceTo(playerPos);
             if (distance > CHUNK_RENDERING_DISTANCE) {
@@ -309,31 +332,14 @@ public:
             }
             BakedChunk *bakedChunk = bakeChunk(chunk);
 
-            glBindVertexArray(vao);
+            shader->use();
             for (const auto &part: bakedChunk->chunkParts) {
-                glBindVertexArray(vao);
-                glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                glBufferData(GL_ARRAY_BUFFER, part.vertices.size() * sizeof(GLfloat), part.vertices.data(),
-                             GL_STATIC_DRAW);
-
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-                glBufferData(GL_ELEMENT_ARRAY_BUFFER, part.indices.size() * sizeof(GLuint), part.indices.data(),
-                             GL_STATIC_DRAW);
-
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) 0);
-                glEnableVertexAttribArray(0);
-
-                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) (3 * sizeof(float)));
-                glEnableVertexAttribArray(1);
-
-                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) (6 * sizeof(float)));
-                glEnableVertexAttribArray(2);
+                glBindVertexArray(part.vao);
 
                 glm::vec3 pos = {chunk->position.x, chunk->position.y, chunk->position.z};
                 pos *= CHUNK_SIZE_XYZ; // Scale chunk pos
                 glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
 
-                shader->use();
                 shader->setMat4("model", model);
 
                 if (part.blockID <= 0) {
@@ -406,6 +412,9 @@ int main() {
     SDL_SetRelativeMouseMode(SDL_TRUE);
 
     bool running = true;
+    auto lastTime = SDL_GetTicks();
+    int frameCount = 0;
+    int stableFrameCount = 0;
     while (running) {
         globalClock.tick();
 
@@ -450,6 +459,17 @@ int main() {
         Vec3i playerPos = {static_cast<int>(camera_pos.x), static_cast<int>(camera_pos.y), static_cast<int>(camera_pos.z)};
         chunksRenderer->renderChunks(world->chunks, shader, playerPos);
         SDL_GL_SwapWindow(window);
+
+        frameCount++;
+        if (SDL_GetTicks() - lastTime > 1000) {
+            lastTime = SDL_GetTicks();
+
+            stableFrameCount = frameCount;
+            frameCount = 0;
+
+            std::string title = "FPS: " + std::to_string(stableFrameCount);
+            SDL_SetWindowTitle(window, title.c_str());
+        }
     }
     SDL_Quit();
     return 0;
