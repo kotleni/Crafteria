@@ -307,6 +307,17 @@ public:
         return false;
     }
 
+    // TODO: Review all allocable things
+    void unloadChunk(Chunk *chunk) {
+        for (Block *block: chunk->blocks) {
+            delete block;
+        }
+        delete chunk->bakedChunk;
+        this->chunks.erase(std::remove(this->chunks.begin(), this->chunks.end(), chunk), this->chunks.end());
+
+        std::cout << "Chunk " << chunk->hash << " unloaded" << std::endl;
+    }
+
     void updateChunks() {
         while (true) {
             // Vec3i playerPos = {static_cast<int>(this->player->position.x), static_cast<int>(this->player->position.y), static_cast<int>(this->player->position.z)};
@@ -338,6 +349,12 @@ public:
             }
 
             for (Chunk *chunk: chunks) {
+                auto chunkPos = chunk->position;
+                auto distance = playerChunkPos.distanceTo(chunkPos);
+                if (distance > CHUNK_RENDERING_DISTANCE) {
+                    unloadChunk(chunk);
+                }
+
                 if (!chunk->isBaked()) {
                     chunk->bakeChunk();
                 }
@@ -570,6 +587,7 @@ int main() {
             frameCount = 0;
 
             std::string title = "FPS: " + std::to_string(stableFrameCount);
+            title += " | Chunks loaded: " + std::to_string(world->chunks.size());
             SDL_SetWindowTitle(window, title.c_str());
         }
     }
