@@ -100,6 +100,7 @@ struct BakedChunkPart {
 
 struct BakedChunk {
     std::vector<BakedChunkPart> chunkParts;
+    std::vector<BakedChunkPart> liquidChunkParts;
 };
 
 // TODO: Replace with real hash
@@ -158,8 +159,6 @@ public:
         glm::vec3(1, 0, 0), // right
     };
 
-    std::mutex mutex;
-
     bool isBaked() {
         return bakedChunk != nullptr;
     }
@@ -204,7 +203,7 @@ public:
                 Vec3i neighborPos = currentBlock->position + neighborOffsets[i];
                 Block* neighborBlock = chunk->getBlock(Vec3i(neighborPos.x, neighborPos.y, neighborPos.z));
 
-                if (neighborBlock == nullptr || !neighborBlock->isSolid()) {
+                if (neighborBlock == nullptr || (!neighborBlock->isSolid() && currentBlock->isSolid())) {
                     // Generate vertices and indices for the visible face
                     int vertexOffset = vertices.size() / 8;
 
@@ -275,7 +274,10 @@ public:
                     part.isSolid = currentBlock->isSolid();
                     part.isBuffered = false;
 
-                    bakedChunk->chunkParts.push_back(part);
+                    if (part.isSolid)
+                        bakedChunk->chunkParts.push_back(part);
+                    else
+                        bakedChunk->liquidChunkParts.push_back(part);
                 }
             }
         }
@@ -298,6 +300,8 @@ class World {
 private:
     siv::PerlinNoise perlin;
     std::vector<std::thread> threads;
+
+    std::mutex mutex;
 public:
     Player *player;
     int seedValue;
@@ -328,12 +332,13 @@ public:
 
     // TODO: Review all allocable things
     void unloadChunk(Chunk *chunk) {
+        mutex.lock();
         for (Block *block: chunk->blocks) {
             delete block;
         }
         delete chunk->bakedChunk;
         this->chunks.erase(std::remove(this->chunks.begin(), this->chunks.end(), chunk), this->chunks.end());
-
+        mutex.unlock();
         std::cout << "Chunk " << chunk->hash << " unloaded" << std::endl;
     }
 
@@ -389,6 +394,7 @@ public:
         constexpr float heightMultiplier = 6.0f;
         constexpr int octaves = 5;
         constexpr int seaLevel = 12;
+        constexpr int realSeaLevel = 15;
 
         int baseX = pos.x * CHUNK_SIZE_XYZ;
         int baseZ = pos.z * CHUNK_SIZE_XYZ;
@@ -409,10 +415,6 @@ public:
                     surfaceBlock = BLOCK_COBBLESTONE;
                 }
 
-                if (y < 15) {
-                    surfaceBlock = BLOCK_WATER;
-                }
-
                 chunk->setBlock(surfaceBlock, {x, y, z});
 
                 for (int depth = 1; depth < 16; ++depth) {
@@ -427,9 +429,11 @@ public:
                 }
 
                 // Add water if below sea level
-                if (y < seaLevel) {
-                    for (int waterY = y; waterY <= seaLevel; ++waterY) {
-                        chunk->setBlock(BLOCK_WATER, {x, waterY, z}); // Water block
+                if (y < realSeaLevel) {
+                    for (int waterY = y; waterY <= realSeaLevel; ++waterY) {
+                        Vec3i pos = {x, waterY, z};
+                        if (chunk->getBlock(pos) == nullptr)
+                            chunk->setBlock(BLOCK_WATER, pos); // Water block
                     }
                 }
             }
@@ -496,6 +500,7 @@ public:
             if (bakedChunk == nullptr) continue;
 
             shader->use();
+            glDisable(GL_BLEND);
             for (auto &part: bakedChunk->chunkParts) {
                 if (!part.hasBuffered()) {
                     part.bufferMesh();
@@ -510,17 +515,25 @@ public:
 
                 shader->setMat4("model", model);
 
-                if (part.blockID <= 0) {
-                    std::cout << "Panic! Wrong blockID: " << part.blockID << std::endl;
-                    SDL_Quit();
-                    for (;;){ SDL_Delay(1000); }
-                }
+                glBindTexture(GL_TEXTURE_2D, part.blockID - 1);
+                glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, 0);
+            }
 
-                if (part.isSolid) {
-                    glDisable( GL_BLEND);
-                } else {
-                    glEnable( GL_BLEND);
+            // Draw not-solid
+            glEnable(GL_BLEND);
+            for (auto &part: bakedChunk->liquidChunkParts) {
+                if (!part.hasBuffered()) {
+                    part.bufferMesh();
                 }
+                glBindVertexArray(part.vao);
+
+                shader->setBool("isSolid", part.isSolid);
+
+                glm::vec3 pos = {chunk->position.x, chunk->position.y, chunk->position.z};
+                pos *= CHUNK_SIZE_XYZ; // Scale chunk pos
+                glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
+
+                shader->setMat4("model", model);
 
                 glBindTexture(GL_TEXTURE_2D, part.blockID - 1);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, 0);
