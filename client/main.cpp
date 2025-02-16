@@ -471,6 +471,7 @@ int main() {
     glm::vec3 camera_front(0.0f, 0.0f, -1.0f);
     glm::vec3 camera_up(0.0f, 1.0f, 0.0f);
 
+    bool isMouseRelative = true;
     SDL_SetRelativeMouseMode(SDL_TRUE);
 
     bool running = true;
@@ -490,6 +491,10 @@ int main() {
 
             if (event.type == SDL_KEYDOWN) {
                 switch (event.key.keysym.sym) {
+                    case SDLK_F3:
+                        isMouseRelative = !isMouseRelative;
+                        SDL_SetRelativeMouseMode(static_cast<SDL_bool>(isMouseRelative));
+                        break;
                     // case SDLK_r:
                     //     x+=1;
                     // if (x >= 4) {
