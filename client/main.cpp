@@ -189,8 +189,8 @@ int main() {
     glm::vec3 camera_front(0.0f, 0.0f, -1.0f);
     glm::vec3 camera_up(0.0f, 1.0f, 0.0f);
 
-    bool isMouseRelative = true;
-    SDL_SetRelativeMouseMode(SDL_TRUE);
+    bool isMouseRelative = false;
+    // SDL_SetRelativeMouseMode(SDL_TRUE);
 
     bool running = true;
     auto lastTime = SDL_GetTicks();
