@@ -9,6 +9,7 @@ in vec3 FragPos;
 uniform sampler2D ourTexture;
 uniform vec3 lightPos;
 uniform vec3 viewPos;
+uniform bool isSolid;
 
 void main() {
     vec3 norm = normalize(Normal);
@@ -22,5 +23,8 @@ void main() {
 
     vec3 result = color; // (ambient + diff) * color;
 
-    FragColor = vec4(result, 1.0);
+    if(isSolid)
+        FragColor = vec4(result, 1.0);
+    else
+        FragColor = vec4(result, 0.5);
 }

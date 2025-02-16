@@ -52,6 +52,10 @@ class Block {
 public:
     Vec3i position;
     BlockID id;
+
+    bool isSolid() {
+        return id != BLOCK_AIR && id != BLOCK_WATER && id != BLOCK_LAVA;
+    }
 };
 
 struct BakedChunkPart {
@@ -61,6 +65,7 @@ struct BakedChunkPart {
 
     GLuint vao, vbo, ebo;
     bool isBuffered; // TODO: Replace by checking VAO...
+    bool isSolid;
 
     [[nodiscard]] bool hasBuffered() const {
         return isBuffered;
@@ -199,7 +204,7 @@ public:
                 Vec3i neighborPos = currentBlock->position + neighborOffsets[i];
                 Block* neighborBlock = chunk->getBlock(Vec3i(neighborPos.x, neighborPos.y, neighborPos.z));
 
-                if (neighborBlock == nullptr) {
+                if (neighborBlock == nullptr || !neighborBlock->isSolid()) {
                     // Generate vertices and indices for the visible face
                     int vertexOffset = vertices.size() / 8;
 
@@ -267,6 +272,7 @@ public:
                     part.vertices = std::move(vertices);
                     part.indices = std::move(indices);
                     part.blockID = currentBlock->id;
+                    part.isSolid = currentBlock->isSolid();
                     part.isBuffered = false;
 
                     bakedChunk->chunkParts.push_back(part);
@@ -380,7 +386,7 @@ public:
         chunks.push_back(chunk);
 
         constexpr float scale = 0.08f;
-        constexpr float heightMultiplier = 4.0f;
+        constexpr float heightMultiplier = 6.0f;
         constexpr int octaves = 5;
         constexpr int seaLevel = 12;
 
@@ -403,7 +409,7 @@ public:
                     surfaceBlock = BLOCK_COBBLESTONE;
                 }
 
-                if (y < seaLevel) {
+                if (y < 15) {
                     surfaceBlock = BLOCK_WATER;
                 }
 
@@ -496,6 +502,8 @@ public:
                 }
                 glBindVertexArray(part.vao);
 
+                shader->setBool("isSolid", part.isSolid);
+
                 glm::vec3 pos = {chunk->position.x, chunk->position.y, chunk->position.z};
                 pos *= CHUNK_SIZE_XYZ; // Scale chunk pos
                 glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
@@ -507,6 +515,13 @@ public:
                     SDL_Quit();
                     for (;;){ SDL_Delay(1000); }
                 }
+
+                if (part.isSolid) {
+                    glDisable( GL_BLEND);
+                } else {
+                    glEnable( GL_BLEND);
+                }
+
                 glBindTexture(GL_TEXTURE_2D, part.blockID - 1);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, 0);
             }
@@ -568,6 +583,9 @@ int main() {
     // TODO
     // glEnable(GL_CULL_FACE);
     // glCullFace(GL_BACK);
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable( GL_BLEND);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -645,6 +663,7 @@ int main() {
 
             std::string title = "FPS: " + std::to_string(stableFrameCount);
             title += " | Chunks loaded: " + std::to_string(world->chunks.size());
+            title += " | POS: " + std::to_string(world->player->position.x) + " " + std::to_string(world->player->position.y) + " " + std::to_string(world->player->position.z);
             SDL_SetWindowTitle(window, title.c_str());
         }
     }
