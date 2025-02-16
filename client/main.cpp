@@ -15,7 +15,8 @@
 #include "Math/Vec3i.h"
 
 #define CHUNK_SIZE_XYZ 16
-#define CHUNK_RENDERING_DISTANCE (4 * CHUNK_SIZE_XYZ)
+#define CHUNK_RENDERING_DISTANCE 4
+#define CHUNK_RENDERING_DISTANCE_IN_BLOCKS (CHUNK_RENDERING_DISTANCE * CHUNK_SIZE_XYZ)
 
 struct Clock
 {
@@ -267,15 +268,24 @@ public:
     }
 };
 
+class Player {
+    public:
+    Player(): position({8, 20, 8}) { }
+
+    glm::vec3 position;
+};
+
 class World {
 private:
     siv::PerlinNoise perlin;
     std::vector<std::thread> threads;
 public:
+    Player *player;
     int seedValue;
     std::vector<Chunk *> chunks;
 
     World(int seedValue) {
+        this->player = new Player();
         this->seedValue = seedValue;
         this->perlin = siv::PerlinNoise(seedValue);
 
@@ -288,17 +298,43 @@ public:
     int zz = 0;
     int max_xz = 8;
 
+    bool isChunkExist(Vec3i chunkPos) {
+        for (Chunk *chunk: this->chunks) {
+            if (chunk->position == chunkPos) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     void updateChunks() {
         while (true) {
-            if (xx >= max_xz && zz >= max_xz) {
+            // Vec3i playerPos = {static_cast<int>(this->player->position.x), static_cast<int>(this->player->position.y), static_cast<int>(this->player->position.z)};
+            Vec3i playerChunkPos = {static_cast<int>(this->player->position.x / CHUNK_SIZE_XYZ), 0, static_cast<int>(this->player->position.z / CHUNK_SIZE_XYZ)};
 
-            } else {
-                generateFilledChunk({xx, 0, zz});
-                xx++;
-                if (xx >= max_xz) {
-                    xx = 0;
-                    zz++;
+            // Find not generated chunks around player
+            auto maxDistance = CHUNK_RENDERING_DISTANCE;
+            bool isFound = false;
+            Vec3i targetChunkPos = {0, 0, 0};
+            double targetChunkDistance = 99999;
+            for (int x = -maxDistance; x < maxDistance; x++) {
+                for (int z = -maxDistance; z < maxDistance; z++) {
+                    Vec3i chunkPos = playerChunkPos + Vec3i(x, 0, z);
+                    if (!isChunkExist(chunkPos)) {
+                        // generateFilledChunk(chunkPos);
+
+                        auto distance = playerChunkPos.distanceTo(chunkPos);
+                        if (distance < targetChunkDistance) {
+                            targetChunkDistance = distance;
+                            targetChunkPos = chunkPos;
+                            isFound = true;
+                        }
+                    }
                 }
+            }
+
+            if (isFound) {
+                generateFilledChunk(targetChunkPos);
             }
 
             for (Chunk *chunk: chunks) {
@@ -383,7 +419,7 @@ public:
     void renderChunks(std::vector<Chunk *> chunks, Shader *shader, Vec3i playerPos) {
         for (const auto &chunk: chunks) {
             double distance = (chunk->position * CHUNK_SIZE_XYZ).distanceTo(playerPos);
-            if (distance > CHUNK_RENDERING_DISTANCE) {
+            if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
                 continue;
             }
             BakedChunk *bakedChunk = chunk->bakedChunk;
@@ -467,7 +503,6 @@ int main() {
     int z = 0;
     // world->generateFilledChunk({0, 0, 0});
 
-    glm::vec3 camera_pos(8.0f, 8.0f, 20.0f);
     glm::vec3 camera_front(0.0f, 0.0f, -1.0f);
     glm::vec3 camera_up(0.0f, 1.0f, 0.0f);
 
@@ -509,21 +544,21 @@ int main() {
 
         const Uint8 *state = SDL_GetKeyboardState(NULL);
         float camera_speed = 0.01f * globalClock.delta;
-        if (state[SDL_SCANCODE_W]) camera_pos += camera_speed * camera_front;
-        if (state[SDL_SCANCODE_S]) camera_pos -= camera_speed * camera_front;
-        if (state[SDL_SCANCODE_A]) camera_pos -= glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
-        if (state[SDL_SCANCODE_D]) camera_pos += glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
+        if (state[SDL_SCANCODE_W]) world->player->position += camera_speed * camera_front;
+        if (state[SDL_SCANCODE_S]) world->player->position -= camera_speed * camera_front;
+        if (state[SDL_SCANCODE_A]) world->player->position -= glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
+        if (state[SDL_SCANCODE_D]) world->player->position += glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
 
-        glm::mat4 view = glm::lookAt(camera_pos, camera_pos + camera_front, camera_up);
+        glm::mat4 view = glm::lookAt(world->player->position, world->player->position + camera_front, camera_up);
         glm::mat4 projection = glm::perspective(glm::radians(75.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
         shader->setMat4("view", view);
         shader->setMat4("projection", projection);
         shader->setVec3("lightPos", glm::vec3(10.0f, 10.0f, 10.0f));
-        shader->setVec3("viewPos", camera_pos);
+        shader->setVec3("viewPos", world->player->position);
 
         // glBindVertexArray(vao);
-        Vec3i playerPos = {static_cast<int>(camera_pos.x), static_cast<int>(camera_pos.y), static_cast<int>(camera_pos.z)};
+        Vec3i playerPos = {static_cast<int>(world->player->position.x), static_cast<int>(world->player->position.y), static_cast<int>(world->player->position.z)};
         chunksRenderer->renderChunks(world->chunks, shader, playerPos);
         SDL_GL_SwapWindow(window);
 
