@@ -1,7 +1,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "Image.h"
 
+#include <iostream>
+#include <ostream>
 #include <stdexcept>
+
+#define NR_COMPONENTS_COUNT 4
 
 Image* Image::load(const std::string &fileName) {
     Image *i = new Image();
@@ -14,6 +18,10 @@ Image* Image::load(const std::string &fileName) {
     i->width = width;
     i->height = height;
     i->nrComponents = nrComponents;
+
+    if (nrComponents != NR_COMPONENTS_COUNT) {
+        std::cerr << "Warning! Wrong number of texture nrComponents: " << nrComponents << " for " << filename << std::endl;
+    }
 
     if (i->raw == nullptr) {
         throw std::runtime_error("Unable to open image: " + fileName);

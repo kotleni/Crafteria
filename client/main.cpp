@@ -18,6 +18,21 @@
 #define CHUNK_RENDERING_DISTANCE 4
 #define CHUNK_RENDERING_DISTANCE_IN_BLOCKS (CHUNK_RENDERING_DISTANCE * CHUNK_SIZE_XYZ)
 
+typedef int BlockID;
+
+enum BlocksIds: BlockID {
+    BLOCK_AIR = 0,
+    BLOCK_STONE = 1,
+    BLOCK_COBBLESTONE = 2,
+    BLOCK_DIRT = 3,
+    BLOCK_GRASS = 4,
+    BLOCK_PLANKS = 5,
+    BLOCK_LOG = 6,
+    BLOCK_LEAVES = 7,
+    BLOCK_LAVA = 8,
+    BLOCK_WATER = 9
+};
+
 struct Clock
 {
     uint32_t last_tick_time = 0;
@@ -32,8 +47,6 @@ struct Clock
 };
 
 Clock globalClock;
-
-typedef int BlockID;
 
 class Block {
 public:
@@ -363,23 +376,55 @@ public:
     }
 
     void generateFilledChunk(Vec3i pos) {
-        Chunk* chunk = new Chunk(pos);
-        this->chunks.push_back(chunk);
+        auto *chunk = new Chunk(pos);
+        chunks.push_back(chunk);
+
+        constexpr float scale = 0.08f;
+        constexpr float heightMultiplier = 4.0f;
+        constexpr int octaves = 5;
+        constexpr int seaLevel = 12;
+
+        int baseX = pos.x * CHUNK_SIZE_XYZ;
+        int baseZ = pos.z * CHUNK_SIZE_XYZ;
 
         for (int x = 0; x < CHUNK_SIZE_XYZ; ++x) {
             for (int z = 0; z < CHUNK_SIZE_XYZ; ++z) {
-                float scale = 0.005;
-                int octaves = 6;
-                double yMod = perlin.octave2D_01(
-                    ((pos.x * CHUNK_SIZE_XYZ) + x) * scale,
-                    ((pos.z * CHUNK_SIZE_XYZ) * z) * scale,
-                    octaves
-                    );
-                int y = yMod * 3;
+                double yMod = perlin.octave2D_01((baseX + x) * scale, (baseZ + z) * scale, octaves);
+                int y = static_cast<int>(yMod * heightMultiplier) + seaLevel;
 
-                chunk->setBlock(1, {x, y, z});
-                for (int a = 1; a < 16; a++) {
-                    chunk->setBlock(3, {x, y - a, z});
+                double temperature = perlin.octave2D_11((baseZ + x) * scale * 0.5, (baseX + z) * scale * 0.5, octaves);
+
+                BlockID surfaceBlock;
+                if (temperature > 0.4) {
+                    surfaceBlock = BLOCK_GRASS;
+                } else if (temperature > -0.2) {
+                    surfaceBlock = BLOCK_GRASS;
+                } else {
+                    surfaceBlock = BLOCK_COBBLESTONE;
+                }
+
+                if (y < seaLevel) {
+                    surfaceBlock = BLOCK_WATER;
+                }
+
+                chunk->setBlock(surfaceBlock, {x, y, z});
+
+                for (int depth = 1; depth < 16; ++depth) {
+                    int depthY = y - depth;
+                    if (depthY < 0) break; // Avoid out-of-bounds
+
+                    if (depth < 3) {
+                        chunk->setBlock(BLOCK_DIRT, {x, depthY, z});
+                    } else {
+                        chunk->setBlock(BLOCK_COBBLESTONE, {x, depthY, z});
+                    }
+                }
+
+                // Add water if below sea level
+                if (y < seaLevel) {
+                    for (int waterY = y; waterY <= seaLevel; ++waterY) {
+                        chunk->setBlock(BLOCK_WATER, {x, waterY, z}); // Water block
+                    }
                 }
             }
         }
@@ -502,9 +547,21 @@ int main() {
     glewExperimental = GL_TRUE;
     glewInit();
 
-    loadImageToGPU("dirt", 0);
-    loadImageToGPU("grass", 1);
-    loadImageToGPU("cobblestone", 2);
+    std::pair<std::string, BlockID> blocksData[9] = {
+        std::pair("cobblestone", BLOCK_COBBLESTONE),
+        std::pair("dirt", BLOCK_DIRT),
+        std::pair("grass", BLOCK_GRASS),
+        std::pair("lava", BLOCK_LAVA),
+        std::pair("water", BLOCK_WATER),
+        std::pair("oak_leaves", BLOCK_LEAVES),
+        std::pair("oak_log", BLOCK_LOG),
+        std::pair("oak_planks", BLOCK_PLANKS),
+        std::pair("stone", BLOCK_STONE),
+    };
+    for (int i = 0; i < 9; i++) {
+        loadImageToGPU(blocksData[i].first, blocksData[i].second - 1);
+        std::cout << "Loaded block data " << blocksData[i].first << std::endl;
+    }
 
     Shader *shader = Shader::load("cube");
 
