@@ -30,7 +30,8 @@ enum BlocksIds: BlockID {
     BLOCK_LOG = 6,
     BLOCK_LEAVES = 7,
     BLOCK_LAVA = 8,
-    BLOCK_WATER = 9
+    BLOCK_WATER = 9,
+    BLOCK_SAND = 10
 };
 
 struct Clock
@@ -410,7 +411,7 @@ public:
                 if (temperature > 0.4) {
                     surfaceBlock = BLOCK_GRASS;
                 } else if (temperature > -0.2) {
-                    surfaceBlock = BLOCK_GRASS;
+                    surfaceBlock = BLOCK_SAND;
                 } else {
                     surfaceBlock = BLOCK_COBBLESTONE;
                 }
@@ -575,7 +576,7 @@ int main() {
     glewExperimental = GL_TRUE;
     glewInit();
 
-    std::pair<std::string, BlockID> blocksData[9] = {
+    std::pair<std::string, BlockID> blocksData[10] = {
         std::pair("cobblestone", BLOCK_COBBLESTONE),
         std::pair("dirt", BLOCK_DIRT),
         std::pair("grass", BLOCK_GRASS),
@@ -585,8 +586,9 @@ int main() {
         std::pair("oak_log", BLOCK_LOG),
         std::pair("oak_planks", BLOCK_PLANKS),
         std::pair("stone", BLOCK_STONE),
+        std::pair("sand", BLOCK_SAND),
     };
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < 10; i++) {
         loadImageToGPU(blocksData[i].first, blocksData[i].second - 1);
         std::cout << "Loaded block data " << blocksData[i].first << std::endl;
     }
