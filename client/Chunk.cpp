@@ -1,5 +1,7 @@
 #include "Chunk.h"
 
+#include "constants.h"
+
 void Chunk::setBlock(BlockID id, Vec3i pos) {
     for (Block *cube: blocks) {
         if (cube->position == pos) {
@@ -49,7 +51,7 @@ void Chunk::addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices
     }
 }
 
-void Chunk::bakeChunk() {
+void Chunk::bakeChunk(BlocksSource *blocksSource) {
     Chunk *chunk = this;
     auto bakedChunk = new BakedChunk();
 
@@ -63,8 +65,16 @@ void Chunk::bakeChunk() {
             std::vector<GLuint> indices;
 
             // Check if the neighboring block exists or is air (to render the face)
-            Vec3i neighborPos = currentBlock->position + neighborOffsets[i];
-            Block *neighborBlock = chunk->getBlock(Vec3i(neighborPos.x, neighborPos.y, neighborPos.z));
+            Vec3i neighborWorldPos = currentBlock->position + neighborOffsets[i];
+            Block *neighborBlock = blocksSource->getBlock(neighborWorldPos);
+
+            // DEBUG
+            // if (neighborBlock) {
+            //     std::cout << currentBlock->position.x << ", " << currentBlock->position.y << ", " << currentBlock->position.z << std::endl;
+            //     std::cout << neighborBlock->position.x << ", " << neighborBlock->position.y << ", " << neighborBlock->position.z << std::endl;
+            //     std::cout << neighborWorldPos.x << ", " << neighborWorldPos.y << ", " << neighborWorldPos.z << std::endl;
+            //     std::cout << "-----" << std::endl;
+            // }
 
             if (neighborBlock == nullptr || (!neighborBlock->isSolid() && currentBlock->isSolid())) {
                 // Generate vertices and indices for the visible face
@@ -149,4 +159,9 @@ void Chunk::bakeChunk() {
 
     this->bakedChunk = bakedChunk;
     this->hash = fakeHashIndex++;
+}
+
+bool Chunk::isBlockInBounds(Vec3i worldPos) {
+    return (worldPos.x >= position.x * CHUNK_SIZE_XYZ && worldPos.x < (position.x + 1) * CHUNK_SIZE_XYZ &&
+            worldPos.z >= position.z * CHUNK_SIZE_XYZ && worldPos.z < (position.z + 1) * CHUNK_SIZE_XYZ);
 }

@@ -4,9 +4,10 @@
 #include <iostream>
 #include <glm/glm.hpp>
 
+#include "Chunk.h"
 #include "BakedChunk.h"
 #include "Block.h"
-
+#include "BlocksSource.h"
 
 // TODO: Replace with real hash
 static int fakeHashIndex = 0;
@@ -51,7 +52,10 @@ public:
 
     void addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices, Block *currentBlock, glm::vec3 faceDirection, glm::vec3 offsets[]);
 
-    void bakeChunk();
+    void bakeChunk(BlocksSource *blocksSource);
+
+    bool isBlockInBounds(Vec3i worldPos);
+
 };
 
 #endif //CHUNK_H

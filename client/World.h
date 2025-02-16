@@ -9,8 +9,9 @@
 #include "Player.h"
 #include "Chunk.h"
 #include "Math/Vec3i.h"
+#include "BlocksSource.h"
 
-class World {
+class World: public BlocksSource {
 private:
     siv::PerlinNoise perlin;
     std::vector<std::thread> threads;
@@ -36,7 +37,8 @@ public:
 
     void generateFilledChunk(Vec3i pos);
 
-    void setBlock(BlockID id, Vec3i pos);
+    Block *getBlock(Vec3i pos) override;
+    void setBlock(BlockID id, Vec3i pos) override;
 };
 
 #endif //H_WORLD

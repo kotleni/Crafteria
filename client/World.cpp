@@ -72,7 +72,7 @@ void World::updateChunks() {
             }
 
             if (!chunk->isBaked()) {
-                chunk->bakeChunk();
+                chunk->bakeChunk(this);
             }
         }
     }
@@ -132,8 +132,21 @@ void World::generateFilledChunk(Vec3i pos) {
     }
 }
 
-void World::setBlock(BlockID id, Vec3i pos) {
-    for (Chunk *chunk: this->chunks) {
-        chunk->setBlock(id, pos);
+
+Block *World::getBlock(Vec3i worldPos) {
+    for (Chunk *chunk : this->chunks) {
+        Block *block = chunk->getBlock(worldPos);
+        if (block != nullptr)
+            return block;
+    }
+    return nullptr;
+}
+
+void World::setBlock(BlockID id, Vec3i worldPos) {
+    for (Chunk *chunk : this->chunks) {
+        if (chunk->isBlockInBounds(worldPos)) {
+            chunk->setBlock(id, worldPos);
+            return;
+        }
     }
 }
