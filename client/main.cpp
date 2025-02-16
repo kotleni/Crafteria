@@ -6,6 +6,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include <iostream>
+#include <thread>
 #include <unordered_map>
 
 #include "Shader.h"
@@ -39,8 +40,52 @@ public:
     BlockID id;
 };
 
+struct BakedChunkPart {
+    std::vector<GLfloat> vertices;
+    std::vector<GLuint> indices;
+    BlockID blockID;
+
+    GLuint vao, vbo, ebo;
+    bool isBuffered; // TODO: Replace by checking VAO...
+
+    [[nodiscard]] bool hasBuffered() const {
+        return isBuffered;
+    }
+
+    void bufferMesh() {
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glGenBuffers(1, &ebo);
+
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), vertices.data(),
+                     GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(),
+                     GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) 0);
+        glEnableVertexAttribArray(0);
+
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) (3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) (6 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+
+        isBuffered = true;
+    }
+};
+
+struct BakedChunk {
+    std::vector<BakedChunkPart> chunkParts;
+};
+
 // TODO: Replace with real hash
 int fakeHashIndex = 0;
+#define BAKING_CHUNK_THREADS_LIMIT 1
 
 class Chunk {
 public:
@@ -72,91 +117,9 @@ public:
         }
         return nullptr;
     }
-};
 
-class World {
-private:
-    siv::PerlinNoise perlin;
-public:
-    int seedValue;
-    std::vector<Chunk *> chunks;
-
-    World(int seedValue) {
-        this->seedValue = seedValue;
-        this->perlin = siv::PerlinNoise(seedValue);
-    }
-
-
-    void generateFilledChunk(Vec3i pos) {
-        Chunk* chunk = new Chunk(pos);
-        this->chunks.push_back(chunk);
-
-        for (int x = 0; x < CHUNK_SIZE_XYZ; ++x) {
-            for (int z = 0; z < CHUNK_SIZE_XYZ; ++z) {
-                float scale = 0.005;
-                int octaves = 6;
-                double yMod = perlin.octave2D_01(
-                    ((pos.x * CHUNK_SIZE_XYZ) + x) * scale,
-                    ((pos.z * CHUNK_SIZE_XYZ) * z) * scale,
-                    octaves
-                    );
-                int y = yMod * 3;
-
-                chunk->setBlock(1, {x, y, z});
-                for (int a = 1; a < 16; a++) {
-                    chunk->setBlock(3, {x, y - a, z});
-                }
-            }
-        }
-    }
-
-    void setBlock(BlockID id, Vec3i pos) {
-        for (Chunk *chunk: this->chunks) {
-            chunk->setBlock(id, pos);
-        }
-    }
-};
-
-float yaw = -90.0f;
-float pitch = 0.0f;
-float lastX = 400, lastY = 300;
-bool firstMouse = true;
-
-void processMouseMotion(SDL_Event &event, glm::vec3 &camera_front) {
-    if (event.type == SDL_MOUSEMOTION) {
-        float xoffset = event.motion.xrel * 0.1f;
-        float yoffset = -event.motion.yrel * 0.1f;
-
-        yaw += xoffset;
-        pitch += yoffset;
-        if (pitch > 89.0f) pitch = 89.0f;
-        if (pitch < -89.0f) pitch = -89.0f;
-
-        glm::vec3 front;
-        front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-        front.y = sin(glm::radians(pitch));
-        front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-        camera_front = glm::normalize(front);
-    }
-}
-
-struct BakedChunkPart {
-    std::vector<GLfloat> vertices;
-    std::vector<GLuint> indices;
-    BlockID blockID;
-    GLuint vao, vbo, ebo;
-};
-
-struct BakedChunk {
-    std::vector<BakedChunkPart> chunkParts;
-};
-
-/**
- * Cached chunks renderer
- */
-class ChunksRenderer {
-private:
-    std::pmr::unordered_map<int, BakedChunk *> cachedBakedChunks;
+    BakedChunk *bakedChunk = nullptr;
+    //std::pmr::unordered_map<int, BakedChunk *> cachedBakedChunks;
 
     Vec3i neighborOffsets[6] = {
         Vec3i(0, 0, -1), // front
@@ -175,6 +138,12 @@ private:
         glm::vec3(-1, 0, 0), // left
         glm::vec3(1, 0, 0), // right
     };
+
+    std::mutex mutex;
+
+    bool isBaked() {
+        return bakedChunk != nullptr;
+    }
 
     void addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices, Block *currentBlock, glm::vec3 faceDirection, glm::vec3 offsets[]) {
         glm::vec2 localOffsets[] = {
@@ -199,10 +168,8 @@ private:
         }
     }
 
-    BakedChunk *bakeChunk(Chunk *chunk) {
-        if (cachedBakedChunks.contains(chunk->hash)) {
-            return cachedBakedChunks.at(chunk->hash);
-        }
+    void bakeChunk() {
+        Chunk *chunk = this;
         auto bakedChunk = new BakedChunk();
 
         for (const auto &block: chunk->blocks) {
@@ -286,28 +253,7 @@ private:
                     part.vertices = std::move(vertices);
                     part.indices = std::move(indices);
                     part.blockID = currentBlock->id;
-
-                    glGenVertexArrays(1, &part.vao);
-                    glGenBuffers(1, &part.vbo);
-                    glGenBuffers(1, &part.ebo);
-
-                    glBindVertexArray(part.vao);
-                    glBindBuffer(GL_ARRAY_BUFFER, part.vbo);
-                    glBufferData(GL_ARRAY_BUFFER, part.vertices.size() * sizeof(GLfloat), part.vertices.data(),
-                                 GL_STATIC_DRAW);
-
-                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, part.ebo);
-                    glBufferData(GL_ELEMENT_ARRAY_BUFFER, part.indices.size() * sizeof(GLuint), part.indices.data(),
-                                 GL_STATIC_DRAW);
-
-                    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) 0);
-                    glEnableVertexAttribArray(0);
-
-                    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) (3 * sizeof(float)));
-                    glEnableVertexAttribArray(1);
-
-                    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) (6 * sizeof(float)));
-                    glEnableVertexAttribArray(2);
+                    part.isBuffered = false;
 
                     bakedChunk->chunkParts.push_back(part);
                 }
@@ -315,9 +261,119 @@ private:
         }
 
         std::cout << "Baked new chunk " << chunk->hash << std::endl;
-        cachedBakedChunks.insert(std::make_pair(chunk->hash, bakedChunk));
-        return bakedChunk;
+
+        this->bakedChunk = bakedChunk;
+        this->hash = fakeHashIndex++;
     }
+};
+
+class World {
+private:
+    siv::PerlinNoise perlin;
+    std::vector<std::thread> threads;
+public:
+    int seedValue;
+    std::vector<Chunk *> chunks;
+
+    World(int seedValue) {
+        this->seedValue = seedValue;
+        this->perlin = siv::PerlinNoise(seedValue);
+
+        for (int i = 0; i < BAKING_CHUNK_THREADS_LIMIT; ++i) {
+            threads.emplace_back(&World::updateChunks, this);
+        }
+    }
+
+    int xx = 0;
+    int zz = 0;
+    int max_xz = 8;
+
+    void updateChunks() {
+        while (true) {
+            if (xx >= max_xz && zz >= max_xz) {
+
+            } else {
+                generateFilledChunk({xx, 0, zz});
+                xx++;
+                if (xx >= max_xz) {
+                    xx = 0;
+                    zz++;
+                }
+            }
+
+            for (Chunk *chunk: chunks) {
+                if (!chunk->isBaked()) {
+                    chunk->bakeChunk();
+                }
+            }
+        }
+    }
+
+    void generateFilledChunk(Vec3i pos) {
+        Chunk* chunk = new Chunk(pos);
+        this->chunks.push_back(chunk);
+
+        for (int x = 0; x < CHUNK_SIZE_XYZ; ++x) {
+            for (int z = 0; z < CHUNK_SIZE_XYZ; ++z) {
+                float scale = 0.005;
+                int octaves = 6;
+                double yMod = perlin.octave2D_01(
+                    ((pos.x * CHUNK_SIZE_XYZ) + x) * scale,
+                    ((pos.z * CHUNK_SIZE_XYZ) * z) * scale,
+                    octaves
+                    );
+                int y = yMod * 3;
+
+                chunk->setBlock(1, {x, y, z});
+                for (int a = 1; a < 16; a++) {
+                    chunk->setBlock(3, {x, y - a, z});
+                }
+            }
+        }
+    }
+
+    void setBlock(BlockID id, Vec3i pos) {
+        for (Chunk *chunk: this->chunks) {
+            chunk->setBlock(id, pos);
+        }
+    }
+};
+
+float yaw = -90.0f;
+float pitch = 0.0f;
+float lastX = 400, lastY = 300;
+bool firstMouse = true;
+
+void processMouseMotion(SDL_Event &event, glm::vec3 &camera_front) {
+    if (event.type == SDL_MOUSEMOTION) {
+        float xoffset = event.motion.xrel * 0.1f;
+        float yoffset = -event.motion.yrel * 0.1f;
+
+        yaw += xoffset;
+        pitch += yoffset;
+        if (pitch > 89.0f) pitch = 89.0f;
+        if (pitch < -89.0f) pitch = -89.0f;
+
+        glm::vec3 front;
+        front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+        front.y = sin(glm::radians(pitch));
+        front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        camera_front = glm::normalize(front);
+    }
+}
+
+/**
+ * Cached chunks renderer
+ */
+class ChunksRenderer {
+private:
+    // BakedChunk *bakeChunkOrGetFromCache(Chunk *chunk) {
+    //     if (cachedBakedChunks.contains(chunk->hash)) {
+    //         return cachedBakedChunks.at(chunk->hash);
+    //     }
+    //
+    //     return nullptr;
+    // }
 
 public:
     ChunksRenderer() {
@@ -330,10 +386,16 @@ public:
             if (distance > CHUNK_RENDERING_DISTANCE) {
                 continue;
             }
-            BakedChunk *bakedChunk = bakeChunk(chunk);
+            BakedChunk *bakedChunk = chunk->bakedChunk;
+
+            // Chunk is not baked yet?
+            if (bakedChunk == nullptr) continue;
 
             shader->use();
-            for (const auto &part: bakedChunk->chunkParts) {
+            for (auto &part: bakedChunk->chunkParts) {
+                if (!part.hasBuffered()) {
+                    part.bufferMesh();
+                }
                 glBindVertexArray(part.vao);
 
                 glm::vec3 pos = {chunk->position.x, chunk->position.y, chunk->position.z};
@@ -403,7 +465,7 @@ int main() {
     auto *world = new World(SDL_GetTicks());
     int x = 0;
     int z = 0;
-    world->generateFilledChunk({0, 0, 0});
+    // world->generateFilledChunk({0, 0, 0});
 
     glm::vec3 camera_pos(8.0f, 8.0f, 20.0f);
     glm::vec3 camera_front(0.0f, 0.0f, -1.0f);
@@ -428,14 +490,14 @@ int main() {
 
             if (event.type == SDL_KEYDOWN) {
                 switch (event.key.keysym.sym) {
-                    case SDLK_r:
-                        x+=1;
-                    if (x >= 4) {
-                        x = 0;
-                        z+=1;
-                    }
-                        world->generateFilledChunk({x, 0, z});
-                        break;
+                    // case SDLK_r:
+                    //     x+=1;
+                    // if (x >= 4) {
+                    //     x = 0;
+                    //     z+=1;
+                    // }
+                    //     world->generateFilledChunk({x, 0, z});
+                    //     break;
                 }
             }
         }
