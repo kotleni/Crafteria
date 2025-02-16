@@ -68,14 +68,6 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
             Vec3i neighborWorldPos = currentBlock->position + neighborOffsets[i];
             Block *neighborBlock = blocksSource->getBlock(neighborWorldPos);
 
-            // DEBUG
-            // if (neighborBlock) {
-            //     std::cout << currentBlock->position.x << ", " << currentBlock->position.y << ", " << currentBlock->position.z << std::endl;
-            //     std::cout << neighborBlock->position.x << ", " << neighborBlock->position.y << ", " << neighborBlock->position.z << std::endl;
-            //     std::cout << neighborWorldPos.x << ", " << neighborWorldPos.y << ", " << neighborWorldPos.z << std::endl;
-            //     std::cout << "-----" << std::endl;
-            // }
-
             if (neighborBlock == nullptr || (!neighborBlock->isSolid() && currentBlock->isSolid())) {
                 // Generate vertices and indices for the visible face
                 int vertexOffset = vertices.size() / 8;

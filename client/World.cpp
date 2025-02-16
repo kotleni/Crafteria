@@ -95,6 +95,8 @@ void World::generateFilledChunk(Vec3i pos) {
         for (int z = 0; z < CHUNK_SIZE_XYZ; ++z) {
             double yMod = perlin.octave2D_01((baseX + x) * scale, (baseZ + z) * scale, octaves);
             int y = static_cast<int>(yMod * heightMultiplier) + seaLevel;
+            int xx = baseX + x;
+            int zz = baseZ + z;
 
             double temperature = perlin.octave2D_11((baseZ + x) * scale * 0.5, (baseX + z) * scale * 0.5, octaves);
 
@@ -107,23 +109,23 @@ void World::generateFilledChunk(Vec3i pos) {
                 surfaceBlock = BLOCK_COBBLESTONE;
             }
 
-            chunk->setBlock(surfaceBlock, {x, y, z});
+            chunk->setBlock(surfaceBlock, {xx, y, zz});
 
             for (int depth = 1; depth < 16; ++depth) {
                 int depthY = y - depth;
                 if (depthY < 0) break; // Avoid out-of-bounds
 
                 if (depth < 3) {
-                    chunk->setBlock(BLOCK_DIRT, {x, depthY, z});
+                    chunk->setBlock(BLOCK_DIRT, {xx, depthY, zz});
                 } else {
-                    chunk->setBlock(BLOCK_COBBLESTONE, {x, depthY, z});
+                    chunk->setBlock(BLOCK_COBBLESTONE, {xx, depthY, zz});
                 }
             }
 
             // Add water if below sea level
             if (y < realSeaLevel) {
                 for (int waterY = y; waterY <= realSeaLevel; ++waterY) {
-                    Vec3i pos = {x, waterY, z};
+                    Vec3i pos = {xx, waterY, zz};
                     if (chunk->getBlock(pos) == nullptr)
                         chunk->setBlock(BLOCK_WATER, pos); // Water block
                 }
