@@ -10,16 +10,18 @@
 #include "Chunk.h"
 #include "Math/Vec3i.h"
 #include "BlocksSource.h"
+#include "World/Generator/AbstractWorldGenerator.h"
+#include "World/Generator/DefaultWorldGenerator.h"
 
 class World: public BlocksSource {
 private:
-    siv::PerlinNoise perlin;
     std::vector<std::thread> threads;
 
     std::mutex mutex;
 public:
     Player *player;
     int seedValue;
+    AbstractWorldGenerator *generator;
     std::vector<Chunk *> chunks;
 
     World(int seedValue);
