@@ -19,14 +19,12 @@ add_executable(crafteria
         client/Shader.cpp
         client/Image.cpp
         client/main.cpp
-        client/World.cpp
+        client/World/World.cpp
         client/Player.cpp
-        client/Chunk.cpp
-        client/Block.cpp
-        client/BakedChunkPart.cpp
-        client/BakedChunk.cpp
-        client/World/Generator/AbstractWorldGenerator.h
+        client/World/Chunk.cpp
+        client/World/Block.cpp
+        client/World/BakedChunkPart.cpp
+        client/World/BakedChunk.cpp
         client/World/Generator/DefaultWorldGenerator.cpp
-        client/World/Generator/DefaultWorldGenerator.h
 )
 target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} OpenGL::GL)

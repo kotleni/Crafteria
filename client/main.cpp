@@ -15,8 +15,8 @@
 #include "Math/Vec3i.h"
 #include "constants.h"
 #include "Player.h"
-#include "World.h"
-#include "BlocksIds.h"
+#include "World/World.h"
+#include "World/BlocksIds.h"
 
 struct Clock
 {

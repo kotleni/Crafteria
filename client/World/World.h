@@ -3,15 +3,15 @@
 
 #include <thread>
 
-#include "constants.h"
-#include "PerlinNoise.h"
+#include "../constants.h"
+#include "../PerlinNoise.h"
 #include "BlocksIds.h"
-#include "Player.h"
+#include "../Player.h"
 #include "Chunk.h"
-#include "Math/Vec3i.h"
+#include "../Math/Vec3i.h"
 #include "BlocksSource.h"
-#include "World/Generator/AbstractWorldGenerator.h"
-#include "World/Generator/DefaultWorldGenerator.h"
+#include "Generator/AbstractWorldGenerator.h"
+#include "Generator/DefaultWorldGenerator.h"
 
 class World: public BlocksSource {
 private:

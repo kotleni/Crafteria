@@ -1,6 +1,6 @@
 #include "Chunk.h"
 
-#include "constants.h"
+#include "../constants.h"
 
 void Chunk::setBlock(BlockID id, Vec3i pos) {
     for (Block *cube: blocks) {

@@ -2,7 +2,7 @@
 #define BLOCK_H
 
 #include "BlocksIds.h"
-#include "Math/Vec3i.h"
+#include "../Math/Vec3i.h"
 
 class Block {
 public:

@@ -2,7 +2,7 @@
 #define ABSTRACTWORLDGENERATOR_H
 
 #include "../../PerlinNoise.h"
-#include "../../Chunk.h"
+#include "../Chunk.h"
 
 class AbstractWorldGenerator {
 public:
