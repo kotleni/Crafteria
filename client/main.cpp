@@ -203,6 +203,9 @@ int main() {
     auto lastTime = SDL_GetTicks();
     int frameCount = 0;
     int stableFrameCount = 0;
+
+    SDL_GL_SetSwapInterval(SDL_TRUE);
+
     while (running) {
         globalClock.tick();
 
