@@ -49,9 +49,9 @@ void Chunk::addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices
 
     float normalizedLight = 1.0f;
 
-    // Reduce light for non-solid blocks
-    // FIXME: What about not liquid?
-    if (!currentBlock->isSolid()) normalizedLight /= 2;
+    // Reduce light for under solid blocks
+    auto topBlock = blocksSource->getBlock(currentBlock->position + Vec3i(0, 1, 0));
+    if (topBlock && !topBlock->isSolid()) normalizedLight /= 4;
     // Reduce light for sides
     else if (faceDirection.y == 0) normalizedLight /= 2;
 
