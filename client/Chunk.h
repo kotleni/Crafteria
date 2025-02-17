@@ -2,6 +2,7 @@
 #define CHUNK_H
 
 #include <iostream>
+#include <unordered_map>
 #include <glm/glm.hpp>
 
 #include "Chunk.h"
@@ -14,7 +15,7 @@ static int fakeHashIndex = 0;
 
 class Chunk {
 public:
-    Chunk(Vec3i position): position(position) {
+    Chunk(Vec3i position): position(position), sunlightMap(0) {
         this->hash = fakeHashIndex++;
     }
 
@@ -22,6 +23,7 @@ public:
     Vec3i position;
 
     std::vector<Block *> blocks;
+    std::unordered_map<Vec3i, int> sunlightMap;
 
     bool isNeedToUnload = false;
 
@@ -52,7 +54,7 @@ public:
 
     bool isBaked();
 
-    void addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices, Vec3i chunkPos, Block *currentBlock, glm::vec3 faceDirection, glm::vec3 offsets[]);
+    void addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices, Vec3i chunkPos, Block *currentBlock, glm::vec3 faceDirection, glm::vec3 offsets[], BlocksSource *blocksSource, Chunk *chunk);
 
     void bakeChunk(BlocksSource *blocksSource);
 

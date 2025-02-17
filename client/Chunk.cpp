@@ -28,7 +28,10 @@ bool Chunk::isBaked() {
 
 void Chunk::addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices, Vec3i chunkPos, Block *currentBlock,
                     glm::vec3 faceDirection,
-                    glm::vec3 offsets[]) {
+                    glm::vec3 offsets[],
+                    BlocksSource *blocksSource,
+                    Chunk *chunk) {
+
     glm::vec2 localOffsets[] = {
         glm::vec2(0, 0),
         glm::vec2(1, 0),
@@ -44,6 +47,16 @@ void Chunk::addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices
         currentBlock->position.z - worldPos.z
     };
 
+    float normalizedLight = 1.0f;
+
+    // Reduce light for non-solid blocks
+    // FIXME: What about not liquid?
+    if (!currentBlock->isSolid()) normalizedLight /= 2;
+    // Reduce light for sides
+    else if (faceDirection.y == 0) normalizedLight /= 2;
+
+    float finalLight = normalizedLight;
+
     for (int i = 0; i < sizeof(localOffsets); i++) {
         glm::vec2 localOffset = localOffsets[i];
         glm::vec3 offset = offsets[i];
@@ -56,6 +69,8 @@ void Chunk::addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices
         vertices->push_back(faceDirection.z);
         vertices->push_back(localOffset.x);
         vertices->push_back(localOffset.y);
+
+        vertices->push_back(finalLight);
     }
 }
 
@@ -63,6 +78,7 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
     long startMs = SDL_GetTicks();
 
     Chunk *chunk = this;
+
     auto bakedChunk = new BakedChunk();
 
     for (const auto &block: chunk->blocks) {
@@ -80,7 +96,7 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
 
             if (neighborBlock == nullptr || (!neighborBlock->isSolid() && currentBlock->isSolid())) {
                 // Generate vertices and indices for the visible face
-                int vertexOffset = vertices.size() / 8;
+                int vertexOffset = vertices.size() / 9;
 
                 if (faceDirection == glm::vec3(0, 0, -1)) {
                     glm::vec3 offsets[] = {
@@ -89,7 +105,7 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
                         glm::vec3(1, 1, -1),
                         glm::vec3(-1, 1, -1)
                     };
-                    addFace(&vertices, &indices, chunk->position, currentBlock, faceDirection, offsets);
+                    addFace(&vertices, &indices, chunk->position, currentBlock, faceDirection, offsets, blocksSource, chunk);
                 } else if (faceDirection == glm::vec3(0, 0, 1)) {
                     glm::vec3 offsets[] = {
                         glm::vec3(-1, -1, 1),
@@ -97,7 +113,7 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
                         glm::vec3(1, 1, 1),
                         glm::vec3(-1, 1, 1)
                     };
-                    addFace(&vertices, &indices, chunk->position, currentBlock, faceDirection, offsets);
+                    addFace(&vertices, &indices, chunk->position, currentBlock, faceDirection, offsets, blocksSource, chunk);
                 } else if (faceDirection == glm::vec3(0, -1, 0)) {
                     glm::vec3 offsets[] = {
                         glm::vec3(-1, -1, -1),
@@ -105,7 +121,7 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
                         glm::vec3(1, -1, 1),
                         glm::vec3(-1, -1, 1),
                     };
-                    addFace(&vertices, &indices, chunk->position, currentBlock, faceDirection, offsets);
+                    addFace(&vertices, &indices, chunk->position, currentBlock, faceDirection, offsets, blocksSource, chunk);
                 } else if (faceDirection == glm::vec3(0, 1, 0)) {
                     glm::vec3 offsets[] = {
                         glm::vec3(-1, 1, -1),
@@ -113,7 +129,7 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
                         glm::vec3(1, 1, 1),
                         glm::vec3(-1, 1, 1),
                     };
-                    addFace(&vertices, &indices, chunk->position, currentBlock, faceDirection, offsets);
+                    addFace(&vertices, &indices, chunk->position, currentBlock, faceDirection, offsets, blocksSource, chunk);
                 } else if (faceDirection == glm::vec3(-1, 0, 0)) {
                     glm::vec3 offsets[] = {
                         glm::vec3(-1, -1, -1),
@@ -121,7 +137,7 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
                         glm::vec3(-1, 1, 1),
                         glm::vec3(-1, 1, -1),
                     };
-                    addFace(&vertices, &indices, chunk->position, currentBlock, faceDirection, offsets);
+                    addFace(&vertices, &indices, chunk->position, currentBlock, faceDirection, offsets, blocksSource, chunk);
                 } else if (faceDirection == glm::vec3(1, 0, 0)) {
                     glm::vec3 offsets[] = {
                         glm::vec3(1, -1, -1),
@@ -129,7 +145,7 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
                         glm::vec3(1, 1, 1),
                         glm::vec3(1, 1, -1),
                     };
-                    addFace(&vertices, &indices, chunk->position, currentBlock, faceDirection, offsets);
+                    addFace(&vertices, &indices, chunk->position, currentBlock, faceDirection, offsets, blocksSource, chunk);
                 }
 
                 indices.push_back(vertexOffset + 0);
