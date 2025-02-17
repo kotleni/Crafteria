@@ -62,6 +62,8 @@ void Chunk::addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices
 }
 
 void Chunk::bakeChunk(BlocksSource *blocksSource) {
+    long startMs = SDL_GetTicks();
+
     Chunk *chunk = this;
     auto bakedChunk = new BakedChunk();
 
@@ -157,7 +159,9 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
         }
     }
 
-    std::cout << "Baked new chunk " << chunk->hash << std::endl;
+    long endMs = SDL_GetTicks();
+    long diffMs = endMs - startMs;
+    std::cout << "Baked chunk #" << chunk->hash << " in " << diffMs << " ms" << std::endl;
 
     this->bakedChunk = bakedChunk;
     this->hash = fakeHashIndex++;
