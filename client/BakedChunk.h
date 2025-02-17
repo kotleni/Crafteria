@@ -16,10 +16,6 @@ public:
     BakedChunk() {
         bakeTime = SDL_GetTicks();
     }
-
-    bool isOutdated() {
-        return (SDL_GetTicks() - bakeTime) > CHUNK_BAKE_LIFETIME_MS;
-    }
 };
 
 #endif //BAKEDCHUNK_H

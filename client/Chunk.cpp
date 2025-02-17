@@ -23,9 +23,7 @@ Block *Chunk::getBlock(Vec3i pos) {
 }
 
 bool Chunk::isBaked() {
-    if (bakedChunk == nullptr) return false;
-    if (bakedChunk->isOutdated()) return false;
-    return true;
+    return bakedChunk != nullptr;
 }
 
 void Chunk::addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices, Vec3i chunkPos, Block *currentBlock,

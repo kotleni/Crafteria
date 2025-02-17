@@ -6,7 +6,7 @@ World::World(int seedValue) {
     this->perlin = siv::PerlinNoise(seedValue);
 
     for (int i = 0; i < BAKING_CHUNK_THREADS_LIMIT; ++i) {
-        threads.emplace_back(&World::updateChunks, this);
+        threads.emplace_back(&World:: updateChunks, this);
     }
 }
 
@@ -31,6 +31,20 @@ void World::unloadChunk(Chunk *chunk) {
     delete chunk->bakedChunk;
     this->chunks.erase(std::remove(this->chunks.begin(), this->chunks.end(), chunk), this->chunks.end());
     std::cout << "Chunk " << chunk->hash << " unloaded" << std::endl;
+}
+
+bool World::areNeighborsGenerated(const Vec3i &chunkPos) {
+    static const std::vector<Vec3i> neighborOffsets = {
+        {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}
+    };
+
+    for (const auto &offset : neighborOffsets) {
+        Vec3i neighborPos = chunkPos + offset;
+        if (!isChunkExist(neighborPos)) {
+            return false; // A neighbor is missing
+        }
+    }
+    return true;
 }
 
 void World::updateChunks() {
@@ -73,7 +87,7 @@ void World::updateChunks() {
                 markChunkToUnload(chunk);
             }
 
-            if (!chunk->isBaked()) {
+            if (!chunk->isBaked() && areNeighborsGenerated(chunkPos)) {
                 chunk->bakeChunk(this);
             }
         }

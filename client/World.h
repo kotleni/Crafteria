@@ -35,6 +35,7 @@ public:
     // TODO: Review all allocable things
     void unloadChunk(Chunk *chunk);
 
+    bool areNeighborsGenerated(const Vec3i &chunkPos);
     void updateChunks();
 
     void generateFilledChunk(Vec3i pos);
