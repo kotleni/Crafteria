@@ -18,6 +18,7 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
             int y = static_cast<int>(yMod * heightMultiplier) + seaLevel;
 
             double temperature = this->perlin.octave2D_11(xx * scale * 0.5, zz * scale * 0.5, octaves);
+            double populationMap = this->perlin.octave2D_11(xx, zz, 2);
 
             BlockID surfaceBlock;
             if (y < realSeaLevel) {
@@ -29,6 +30,33 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
             }
 
             chunk->setBlock(surfaceBlock, {xx, y, zz});
+
+            if (y > realSeaLevel && populationMap > 0.54) {
+                std::pair<Vec3i, BlockID> treePrefab[] = {
+                    std::make_pair(Vec3i(0, 0, 0), BLOCK_LOG),
+                    std::make_pair(Vec3i(0, 1, 0), BLOCK_LOG),
+                    std::make_pair(Vec3i(0, 2, 0), BLOCK_LOG),
+                    std::make_pair(Vec3i(0, 3, 0), BLOCK_LOG),
+                    std::make_pair(Vec3i(0, 4, 0), BLOCK_LOG),
+
+                    std::make_pair(Vec3i(1, 4, 0), BLOCK_LEAVES),
+                    std::make_pair(Vec3i(-1, 4, 0), BLOCK_LEAVES),
+                    std::make_pair(Vec3i(0, 4, 1), BLOCK_LEAVES),
+                    std::make_pair(Vec3i(0, 4, -1), BLOCK_LEAVES),
+                    std::make_pair(Vec3i(1, 4, 1), BLOCK_LEAVES),
+                    std::make_pair(Vec3i(-1, 4, -1), BLOCK_LEAVES),
+                    std::make_pair(Vec3i(1, 4, -1), BLOCK_LEAVES),
+                    std::make_pair(Vec3i(-1, 4, 1), BLOCK_LEAVES),
+
+                    std::make_pair(Vec3i(0, 5, 0), BLOCK_LEAVES)
+                };
+                for (std::pair<Vec3i, BlockID> prefab : treePrefab) {
+                    Vec3i offset = prefab.first;
+                    int blockID = prefab.second;
+
+                    chunk->setBlock(blockID, {xx + offset.x, y + 1 + offset.y, zz + offset.z});
+                }
+            }
 
             for (int depth = 1; depth < 16; ++depth) {
                 int depthY = y - depth;
