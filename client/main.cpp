@@ -94,6 +94,7 @@ public:
                 shader->setBool("isSolid", part.isSolid);
 
                 glm::vec3 pos = {chunk->position.x, chunk->position.y, chunk->position.z};
+                pos *= CHUNK_SIZE_XYZ;
                 glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
 
                 shader->setMat4("model", model);
@@ -113,6 +114,7 @@ public:
                 shader->setBool("isSolid", part.isSolid);
 
                 glm::vec3 pos = {chunk->position.x, chunk->position.y, chunk->position.z};
+                pos *= CHUNK_SIZE_XYZ;
                 glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
 
                 shader->setMat4("model", model);

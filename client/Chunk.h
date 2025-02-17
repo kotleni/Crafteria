@@ -52,7 +52,7 @@ public:
 
     bool isBaked();
 
-    void addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices, Block *currentBlock, glm::vec3 faceDirection, glm::vec3 offsets[]);
+    void addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices, Vec3i chunkPos, Block *currentBlock, glm::vec3 faceDirection, glm::vec3 offsets[]);
 
     void bakeChunk(BlocksSource *blocksSource);
 
