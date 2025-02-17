@@ -11,11 +11,20 @@ out vec3 FragPos;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform float time;
 
 void main() {
     TexCoord = aTexCoord;
 
-    FragPos = vec3(model * vec4(aPos, 1.0));
+    float waveStrength = 0.1;
+    float waveSpeed = 1.1;
+    float waveFrequency = 2.0;
+
+    vec3 modifiedPos = aPos;
+    modifiedPos.y -= waveStrength;
+    modifiedPos.y += waveStrength * sin(waveFrequency * aPos.x + time * waveSpeed);
+
+    FragPos = vec3(model * vec4(modifiedPos, 1.0));
 
     // Convert normal to world space
     Normal = mat3(transpose(inverse(model))) * aNormal;
