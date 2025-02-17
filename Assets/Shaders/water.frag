@@ -15,5 +15,5 @@ uniform float time;
 void main() {
     vec4 rgba = texture(ourTexture, TexCoord);
     vec3 color = vec3(rgba.x, rgba.y, rgba.z);
-    FragColor = vec4(result, 0.5);
+    FragColor = vec4(color, 0.5);
 }
