@@ -99,7 +99,7 @@ void World::generateFilledChunk(Vec3i pos) {
     chunks.push_back(chunk);
 
     constexpr float scale = 0.08f;
-    constexpr float heightMultiplier = 6.0f;
+    constexpr float heightMultiplier = 8.0f;
     constexpr int octaves = 5;
     constexpr int seaLevel = 12;
     constexpr int realSeaLevel = 15;
@@ -109,20 +109,20 @@ void World::generateFilledChunk(Vec3i pos) {
 
     for (int x = 0; x < CHUNK_SIZE_XYZ; ++x) {
         for (int z = 0; z < CHUNK_SIZE_XYZ; ++z) {
-            double yMod = perlin.octave2D_01((baseX + x) * scale, (baseZ + z) * scale, octaves);
-            int y = static_cast<int>(yMod * heightMultiplier) + seaLevel;
             int xx = baseX + x;
             int zz = baseZ + z;
+            double yMod = perlin.octave2D_01(xx * scale, zz * scale, octaves);
+            int y = static_cast<int>(yMod * heightMultiplier) + seaLevel;
 
-            double temperature = perlin.octave2D_11((baseZ + x) * scale * 0.5, (baseX + z) * scale * 0.5, octaves);
+            double temperature = perlin.octave2D_11(xx * scale * 0.5, zz * scale * 0.5, octaves);
 
             BlockID surfaceBlock;
-            if (temperature > 0.4) {
-                surfaceBlock = BLOCK_GRASS;
-            } else if (temperature > -0.2) {
-                surfaceBlock = BLOCK_SAND;
+            if (y < realSeaLevel) {
+                surfaceBlock = BLOCK_DIRT;
+            } else if (temperature > 0.7) {
+                surfaceBlock = BLOCK_STONE;
             } else {
-                surfaceBlock = BLOCK_COBBLESTONE;
+                surfaceBlock = BLOCK_GRASS;
             }
 
             chunk->setBlock(surfaceBlock, {xx, y, zz});
@@ -134,7 +134,7 @@ void World::generateFilledChunk(Vec3i pos) {
                 if (depth < 3) {
                     chunk->setBlock(BLOCK_DIRT, {xx, depthY, zz});
                 } else {
-                    chunk->setBlock(BLOCK_COBBLESTONE, {xx, depthY, zz});
+                    chunk->setBlock(BLOCK_STONE, {xx, depthY, zz});
                 }
             }
 
