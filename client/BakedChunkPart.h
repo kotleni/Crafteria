@@ -16,7 +16,7 @@ public:
     bool isBuffered; // TODO: Replace by checking VAO...
     bool isSolid;
 
-    [[nodiscard]] bool hasBuffered() const;
+    bool hasBuffered() const;
 
     void bufferMesh();
 };

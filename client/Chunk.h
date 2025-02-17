@@ -23,6 +23,8 @@ public:
 
     std::vector<Block *> blocks;
 
+    bool isNeedToUnload = false;
+
     void setBlock(BlockID id, Vec3i pos);
 
     Block *getBlock(Vec3i pos);

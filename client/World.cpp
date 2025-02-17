@@ -19,15 +19,17 @@ bool World::isChunkExist(Vec3i chunkPos) {
     return false;
 }
 
+void World::markChunkToUnload(Chunk *chunk) {
+    chunk->isNeedToUnload = true;
+}
+
 // TODO: Review all allocable things
 void World::unloadChunk(Chunk *chunk) {
-    mutex.lock();
     for (Block *block: chunk->blocks) {
         delete block;
     }
     delete chunk->bakedChunk;
     this->chunks.erase(std::remove(this->chunks.begin(), this->chunks.end(), chunk), this->chunks.end());
-    mutex.unlock();
     std::cout << "Chunk " << chunk->hash << " unloaded" << std::endl;
 }
 
@@ -68,7 +70,7 @@ void World::updateChunks() {
             auto chunkPos = chunk->position;
             auto distance = playerChunkPos.distanceTo(chunkPos);
             if (distance > CHUNK_RENDERING_DISTANCE) {
-                unloadChunk(chunk);
+                markChunkToUnload(chunk);
             }
 
             if (!chunk->isBaked()) {

@@ -30,6 +30,8 @@ public:
 
     bool isChunkExist(Vec3i chunkPos);
 
+    void markChunkToUnload(Chunk *chunk);
+
     // TODO: Review all allocable things
     void unloadChunk(Chunk *chunk);
 

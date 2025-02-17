@@ -65,8 +65,15 @@ public:
 
     }
 
-    void renderChunks(std::vector<Chunk *> chunks, Shader *shader, Vec3i playerPos) {
+    void renderChunks(World* world, Shader *shader, Vec3i playerPos) {
+        std::vector<Chunk *> chunks = world->chunks;
+
         for (const auto &chunk: chunks) {
+            if (chunk->isNeedToUnload) {
+                world->unloadChunk(chunk);
+                continue;
+            }
+
             double distance = (chunk->position * CHUNK_SIZE_XYZ).distanceTo(playerPos);
             if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
                 continue;
@@ -240,7 +247,7 @@ int main() {
 
         // glBindVertexArray(vao);
         Vec3i playerPos = {static_cast<int>(world->player->position.x), static_cast<int>(world->player->position.y), static_cast<int>(world->player->position.z)};
-        chunksRenderer->renderChunks(world->chunks, shader, playerPos);
+        chunksRenderer->renderChunks(world, shader, playerPos);
         SDL_GL_SwapWindow(window);
 
         frameCount++;

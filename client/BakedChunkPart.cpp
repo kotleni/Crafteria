@@ -1,6 +1,6 @@
 #include "BakedChunkPart.h"
 
-[[nodiscard]] bool BakedChunkPart::hasBuffered() const {
+bool BakedChunkPart::hasBuffered() const {
     return isBuffered;
 }
 
