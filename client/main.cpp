@@ -77,6 +77,15 @@ public:
         glm::mat4 view = glm::lookAt(world->player->position, world->player->position + camera_front, camera_up);
         glm::vec3 pos;
 
+        shader->use();
+        shader->setMat4("view", view);
+        shader->setMat4("projection", projection);
+        shader->setVec3("lightPos", this->lightPos);
+        shader->setVec3("viewPos", world->player->position);
+
+        glDisable(GL_BLEND);
+
+        // Draw all solid & unload if needed
         for (const auto &chunk: chunks) {
             if (chunk->isNeedToUnload) {
                 world->unloadChunk(chunk);
@@ -92,50 +101,58 @@ public:
             // Chunk is not baked yet?
             if (bakedChunk == nullptr) continue;
 
-            shader->use();
-            glDisable(GL_BLEND);
+            pos.x = chunk->position.x;
+            pos.y = chunk->position.y;
+            pos.z = chunk->position.z;
+            pos *= CHUNK_SIZE_XYZ;
+
             for (auto &part: bakedChunk->chunkParts) {
                 if (!part.hasBuffered()) {
                     part.bufferMesh();
                 }
                 glBindVertexArray(part.vao);
 
-                pos.x = chunk->position.x;
-                pos.y = chunk->position.y;
-                pos.z = chunk->position.z;
-                pos *= CHUNK_SIZE_XYZ;
-
-                shader->setMat4("view", view);
-                shader->setMat4("projection", projection);
-                shader->setVec3("lightPos", this->lightPos);
-                shader->setVec3("viewPos", world->player->position);
                 shader->setVec3("pos", pos);
 
                 glBindTexture(GL_TEXTURE_2D, part.blockID - 1);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, 0);
             }
+        }
 
-            waterShader->use();
+        waterShader->use();
+        waterShader->setMat4("view", view);
+        waterShader->setMat4("projection", projection);
+        waterShader->setVec3("lightPos", this->lightPos);
+        waterShader->setVec3("viewPos", world->player->position);
+        waterShader->setFloat("time", SDL_GetTicks() / 1000.0f);
+
+        glEnable(GL_BLEND);
+
+        // Draw all liquid
+        for (const auto &chunk: chunks) {
+            double distance = (chunk->position * CHUNK_SIZE_XYZ).distanceTo(playerPos);
+            if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
+                continue;
+            }
+            BakedChunk *bakedChunk = chunk->bakedChunk;
+
+            // Chunk is not baked yet?
+            if (bakedChunk == nullptr) continue;
+
+            pos.x = chunk->position.x;
+            pos.y = chunk->position.y;
+            pos.z = chunk->position.z;
+            pos *= CHUNK_SIZE_XYZ;
+
             // Draw not-solid
-            glEnable(GL_BLEND);
             for (auto &part: bakedChunk->liquidChunkParts) {
                 if (!part.hasBuffered()) {
                     part.bufferMesh();
                 }
                 glBindVertexArray(part.vao);
 
-                pos.x = chunk->position.x;
-                pos.y = chunk->position.y;
-                pos.z = chunk->position.z;
-                pos *= CHUNK_SIZE_XYZ;
-
-                waterShader->setMat4("view", view);
-                waterShader->setMat4("projection", projection);
-                waterShader->setVec3("lightPos", this->lightPos);
-                waterShader->setVec3("viewPos", world->player->position);
                 waterShader->setVec3("pos", pos);
                 waterShader->setVec3("worldPos", pos);
-                waterShader->setFloat("time", SDL_GetTicks() / 1000.0f);
 
                 glBindTexture(GL_TEXTURE_2D, part.blockID - 1);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, 0);
