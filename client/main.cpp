@@ -63,6 +63,9 @@ glm::vec3 camera_up(0.0f, 1.0f, 0.0f);
  * Cached chunks renderer
  */
 class ChunksRenderer {
+    glm::mat4 projection = glm::perspective(glm::radians(75.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+    glm::vec3 lightPos = glm::vec3(10.0f, 10.0f, 10.0f);
+    glm::mat4 mat4One = glm::mat4(1.0f);
 public:
     ChunksRenderer() {
 
@@ -72,7 +75,7 @@ public:
         std::vector<Chunk *> chunks = world->chunks;
 
         glm::mat4 view = glm::lookAt(world->player->position, world->player->position + camera_front, camera_up);
-        glm::mat4 projection = glm::perspective(glm::radians(75.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+        glm::vec3 pos;
 
         for (const auto &chunk: chunks) {
             if (chunk->isNeedToUnload) {
@@ -97,15 +100,16 @@ public:
                 }
                 glBindVertexArray(part.vao);
 
-                glm::vec3 pos = {chunk->position.x, chunk->position.y, chunk->position.z};
+                pos.x = chunk->position.x;
+                pos.y = chunk->position.y;
+                pos.z = chunk->position.z;
                 pos *= CHUNK_SIZE_XYZ;
-                glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
 
                 shader->setMat4("view", view);
                 shader->setMat4("projection", projection);
-                shader->setVec3("lightPos", glm::vec3(10.0f, 10.0f, 10.0f));
+                shader->setVec3("lightPos", this->lightPos);
                 shader->setVec3("viewPos", world->player->position);
-                shader->setMat4("model", model);
+                shader->setVec3("pos", pos);
 
                 glBindTexture(GL_TEXTURE_2D, part.blockID - 1);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, 0);
@@ -120,15 +124,16 @@ public:
                 }
                 glBindVertexArray(part.vao);
 
-                glm::vec3 pos = {chunk->position.x, chunk->position.y, chunk->position.z};
+                pos.x = chunk->position.x;
+                pos.y = chunk->position.y;
+                pos.z = chunk->position.z;
                 pos *= CHUNK_SIZE_XYZ;
-                glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
 
                 waterShader->setMat4("view", view);
                 waterShader->setMat4("projection", projection);
-                waterShader->setVec3("lightPos", glm::vec3(10.0f, 10.0f, 10.0f));
+                waterShader->setVec3("lightPos", this->lightPos);
                 waterShader->setVec3("viewPos", world->player->position);
-                waterShader->setMat4("model", model);
+                waterShader->setVec3("pos", pos);
                 waterShader->setVec3("worldPos", pos);
                 waterShader->setFloat("time", SDL_GetTicks() / 1000.0f);
 
@@ -163,19 +168,19 @@ void loadImageToGPU(std::string fileName, GLuint textureID) {
     delete cobblestoneImage;
 }
 
-void GLAPIENTRY
-MessageCallback( GLenum source,
-                 GLenum type,
-                 GLuint id,
-                 GLenum severity,
-                 GLsizei length,
-                 const GLchar* message,
-                 const void* userParam )
-{
-    fprintf( stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
-             ( type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : "" ),
-              type, severity, message );
-}
+// void GLAPIENTRY
+// MessageCallback( GLenum source,
+//                  GLenum type,
+//                  GLuint id,
+//                  GLenum severity,
+//                  GLsizei length,
+//                  const GLchar* message,
+//                  const void* userParam )
+// {
+//     fprintf( stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+//              ( type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : "" ),
+//               type, severity, message );
+// }
 
 int main() {
     SDL_Init(SDL_INIT_VIDEO);
@@ -188,8 +193,8 @@ int main() {
 
     // Enable debug
     // TODO: Disable for macOS (force)
-    glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(MessageCallback, 0);
+    // glEnable(GL_DEBUG_OUTPUT);
+    // glDebugMessageCallback(MessageCallback, 0);
 
     std::pair<std::string, BlockID> blocksData[10] = {
         std::pair("cobblestone", BLOCK_COBBLESTONE),
@@ -230,7 +235,7 @@ int main() {
     int frameCount = 0;
     int stableFrameCount = 0;
 
-    SDL_GL_SetSwapInterval(SDL_TRUE);
+    SDL_GL_SetSwapInterval(SDL_FALSE);
 
     while (running) {
         globalClock.tick();

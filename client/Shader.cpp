@@ -56,7 +56,7 @@ Shader *Shader::load(std::string file) {
 	if ( InfoLogLength > 0 ){
 		std::vector<char> VertexShaderErrorMessage(InfoLogLength+1);
 		glGetShaderInfoLog(VertexShaderID, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
-		printf("{}\n", &VertexShaderErrorMessage[0]);
+		printf("%s\n", &VertexShaderErrorMessage[0]);
 	}
 
 	// Compile Fragment Shader
@@ -71,7 +71,7 @@ Shader *Shader::load(std::string file) {
 	if ( InfoLogLength > 0 ){
 		std::vector<char> FragmentShaderErrorMessage(InfoLogLength+1);
 		glGetShaderInfoLog(FragmentShaderID, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
-		printf("{}\n", &FragmentShaderErrorMessage[0]);
+		printf("%s\n", &FragmentShaderErrorMessage[0]);
 	}
 
 	// Link the program
@@ -107,6 +107,11 @@ void Shader::use() {
 void Shader::setMat4(const char* key, glm::mat4 mat) {
 	unsigned int loc = glGetUniformLocation(program, key);
 	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(mat));
+}
+
+void Shader::setVec4(const char* key, glm::vec4 vec) {
+	unsigned int loc = glGetUniformLocation(program, key);
+	glUniform4fv(loc, 1, glm::value_ptr(vec));
 }
 
 void Shader::setVec3(const char* key, glm::vec3 vec) {

@@ -22,6 +22,7 @@ public:
     void use();
 
     void setMat4(const char* key, glm::mat4 mat);
+    void setVec4(const char* key, glm::vec4 vec);
     void setVec3(const char* key, glm::vec3 vec);
     void setVec2(const char* key, glm::vec2 vec);
     void setFloat(const char* key, float value);
