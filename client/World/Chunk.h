@@ -15,7 +15,7 @@ static int fakeHashIndex = 0;
 
 class Chunk {
 public:
-    Chunk(Vec3i position): position(position), sunlightMap(0) {
+    Chunk(Vec3i position): position(position) {
         this->hash = fakeHashIndex++;
     }
 
@@ -23,7 +23,6 @@ public:
     Vec3i position;
 
     std::vector<Block *> blocks;
-    std::unordered_map<Vec3i, int> sunlightMap;
 
     bool isNeedToUnload = false;
 
