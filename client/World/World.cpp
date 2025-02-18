@@ -25,11 +25,17 @@ void World::markChunkToUnload(Chunk *chunk) {
 
 // TODO: Review all allocable things
 void World::unloadChunk(Chunk *chunk) {
-    for (Block *block: chunk->blocks) {
-        delete block;
+    for (int x = 0; x < CHUNK_SIZE_XZ; ++x) {
+        for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
+            for (int z = 0; z < CHUNK_SIZE_XZ; ++z) {
+                Block *block = chunk->blocks[x][y][z];
+                //delete block;
+            }
+        }
     }
     delete chunk->bakedChunk;
-    this->chunks.erase(std::remove(this->chunks.begin(), this->chunks.end(), chunk), this->chunks.end());
+    std::ranges::remove(this->chunks, chunk);
+    // this->chunks.erase(std::remove(this->chunks.begin(), this->chunks.end(), chunk), this->chunks.end());
     std::cout << "Chunk " << chunk->hash << " unloaded" << std::endl;
 }
 
@@ -51,8 +57,8 @@ void World::updateChunks() {
     while (true) {
         // Vec3i playerPos = {static_cast<int>(this->player->position.x), static_cast<int>(this->player->position.y), static_cast<int>(this->player->position.z)};
         Vec3i playerChunkPos = {
-            static_cast<int>(this->player->position.x / CHUNK_SIZE_XYZ), 0,
-            static_cast<int>(this->player->position.z / CHUNK_SIZE_XYZ)
+            static_cast<int>(this->player->position.x / CHUNK_SIZE_XZ), 0,
+            static_cast<int>(this->player->position.z / CHUNK_SIZE_XZ)
         };
 
         // Find not generated chunks around player
@@ -82,12 +88,12 @@ void World::updateChunks() {
 
         for (Chunk *chunk: chunks) {
             auto chunkPos = chunk->position;
-            auto distance = playerChunkPos.distanceTo(chunkPos);
+            auto distance = round(targetChunkPos.distanceTo(chunkPos));
             if (distance > CHUNK_RENDERING_DISTANCE) {
                 markChunkToUnload(chunk);
             }
 
-            if (!chunk->isBaked() && areNeighborsGenerated(chunkPos)) {
+            if (!chunk->isBaked() && areNeighborsGenerated(chunkPos) && !chunk->isNeedToUnload) {
                 chunk->bakeChunk(this);
             }
         }
@@ -103,9 +109,10 @@ void World::generateFilledChunk(Vec3i pos) {
 
 
 Block *World::getBlock(Vec3i worldPos) {
+    // TODO: Calculate chunk pos instead of searching
     for (Chunk *chunk : this->chunks) {
         if (chunk->isBlockInBounds(worldPos)) {
-            Block *block = chunk->getBlock(worldPos);
+            Block *block = chunk->getBlock(worldPos - (chunk->position * CHUNK_SIZE_XZ));
             if (block != nullptr)
                 return block;
         }
@@ -114,9 +121,10 @@ Block *World::getBlock(Vec3i worldPos) {
 }
 
 void World::setBlock(BlockID id, Vec3i worldPos) {
+    // TODO: Calculate chunk pos instead of searching
     for (Chunk *chunk : this->chunks) {
         if (chunk->isBlockInBounds(worldPos)) {
-            chunk->setBlock(id, worldPos);
+            chunk->setBlock(id, worldPos - (chunk->position * CHUNK_SIZE_XZ));
             return;
         }
     }

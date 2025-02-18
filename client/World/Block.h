@@ -9,7 +9,7 @@ public:
     Vec3i position;
     BlockID id;
 
-    bool isSolid();
+    bool isSolid() const;
 };
 
 #endif //BLOCK_H

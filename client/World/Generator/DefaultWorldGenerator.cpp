@@ -4,18 +4,18 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
     constexpr float scale = 0.08f;
     constexpr float heightMultiplier = 8.0f;
     constexpr int octaves = 5;
-    constexpr int seaLevel = 12;
-    constexpr int realSeaLevel = 15;
+    constexpr int seaLevel = 64;
+    constexpr int realSeaLevel = 72;
 
-    int baseX = chunk->position.x * CHUNK_SIZE_XYZ;
-    int baseZ = chunk->position.z * CHUNK_SIZE_XYZ;
+    // int baseX = chunk->position.x * CHUNK_SIZE_XZ;
+    // int baseZ = chunk->position.z * CHUNK_SIZE_XZ;
 
-    for (int x = 0; x < CHUNK_SIZE_XYZ; ++x) {
-        for (int z = 0; z < CHUNK_SIZE_XYZ; ++z) {
-            int xx = baseX + x;
-            int zz = baseZ + z;
+    for (int xx = 0; xx < CHUNK_SIZE_XZ; ++xx) {
+        for (int zz = 0; zz < CHUNK_SIZE_XZ; ++zz) {
             double yMod = this->perlin.octave2D_01(xx * scale, zz * scale, octaves);
             int y = static_cast<int>(yMod * heightMultiplier) + seaLevel;
+
+            assert(y >= 0 && y < CHUNK_SIZE_Y);
 
             double temperature = this->perlin.octave2D_11(xx * scale * 0.5, zz * scale * 0.5, octaves);
             double populationMap = this->perlin.octave2D_11(xx, zz, 2);

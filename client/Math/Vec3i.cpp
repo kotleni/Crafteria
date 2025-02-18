@@ -14,6 +14,10 @@ Vec3i Vec3i::operator+(const Vec3i &other) const {
   return {this->x + other.x, this->y + other.y, this->z + other.z};
 }
 
+Vec3i Vec3i::operator-(const Vec3i &other) const {
+  return {this->x - other.x, this->y - other.y, this->z - other.z};
+}
+
 [[nodiscard]] double Vec3i::distanceTo(const Vec3i& vec3_i) const {
   int dx = this->x - vec3_i.x;
   int dy = this->y - vec3_i.y;
