@@ -90,7 +90,7 @@ public:
                 continue;
             }
 
-            double distance = (chunk->position * CHUNK_SIZE_XZ).distanceTo(playerPos);
+            double distance = (chunk->position * CHUNK_SIZE_XZ).distanceTo({playerPos.x, 0, playerPos.z});
             if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
                 continue;
             }
@@ -133,7 +133,7 @@ public:
 
         // Draw all liquid
         for (const auto &chunk: chunks) {
-            double distance = (chunk->position * CHUNK_SIZE_XZ).distanceTo(playerPos);
+            double distance = (chunk->position * CHUNK_SIZE_XZ).distanceTo({playerPos.x, 0, playerPos.z});
             if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
                 continue;
             }

@@ -36,7 +36,7 @@ void World::unloadChunk(Chunk *chunk) {
     // delete chunk->bakedChunk;
     // std::ranges::remove(this->chunks, chunk);
     // // this->chunks.erase(std::remove(this->chunks.begin(), this->chunks.end(), chunk), this->chunks.end());
-    // std::cout << "Chunk " << chunk->hash << " unloaded" << std::endl;
+    std::cout << "Chunk " << chunk->hash << " unloaded" << std::endl;
 }
 
 bool World::areNeighborsGenerated(const Vec3i &chunkPos) {
@@ -88,7 +88,7 @@ void World::updateChunks() {
 
         for (Chunk *chunk: chunks) {
             auto chunkPos = chunk->position;
-            auto distance = round(targetChunkPos.distanceTo(chunkPos));
+            auto distance = round(playerChunkPos.distanceTo(chunkPos));
             if (distance > CHUNK_RENDERING_DISTANCE) {
                 markChunkToUnload(chunk);
             }
