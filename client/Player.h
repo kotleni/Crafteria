@@ -3,9 +3,11 @@
 
 #include <glm/glm.hpp>
 
+#include "constants.h"
+
 class Player {
 public:
-    Player(): position({8, 20, 8}) { }
+    Player(): position({8, CHUNK_SIZE_Y , 8}) { }
 
     glm::vec3 position;
 };
