@@ -29,6 +29,18 @@ public:
         }
     }
 
+    ~Chunk() {
+        for (int x = 0; x < CHUNK_SIZE_XZ; ++x) {
+            for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
+                for (int z = 0; z < CHUNK_SIZE_XZ; ++z) {
+                    Block *block = this->blocks[x][y][z];
+                    delete block;
+                }
+            }
+        }
+        delete this->bakedChunk;
+    }
+
     int hash = -1;
     Vec3i position;
 
