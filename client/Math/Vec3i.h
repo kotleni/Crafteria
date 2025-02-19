@@ -9,6 +9,7 @@ public:
     Vec3i(int x, int y, int z);
 
     bool operator==(const Vec3i &other) const;
+    Vec3i operator-(const Vec3i &other) const;
     Vec3i operator+(const Vec3i &other) const;
     Vec3i operator*(int i) const;
 

@@ -4,21 +4,24 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
     constexpr float scale = 0.08f;
     constexpr float heightMultiplier = 8.0f;
     constexpr int octaves = 5;
-    constexpr int seaLevel = 12;
-    constexpr int realSeaLevel = 15;
+    constexpr int seaLevel = 64;
+    constexpr int realSeaLevel = 67;
 
-    int baseX = chunk->position.x * CHUNK_SIZE_XYZ;
-    int baseZ = chunk->position.z * CHUNK_SIZE_XYZ;
+    int chunkWorldX = chunk->position.x * CHUNK_SIZE_XZ;
+    int chunkWorldZ = chunk->position.z * CHUNK_SIZE_XZ;
 
-    for (int x = 0; x < CHUNK_SIZE_XYZ; ++x) {
-        for (int z = 0; z < CHUNK_SIZE_XYZ; ++z) {
-            int xx = baseX + x;
-            int zz = baseZ + z;
-            double yMod = this->perlin.octave2D_01(xx * scale, zz * scale, octaves);
+    for (int xx = 0; xx < CHUNK_SIZE_XZ; ++xx) {
+        for (int zz = 0; zz < CHUNK_SIZE_XZ; ++zz) {
+            int worldX = chunkWorldX + xx;
+            int worldZ = chunkWorldZ + zz;
+
+            double yMod = this->perlin.octave2D_01(worldX * scale, worldZ * scale, octaves);
             int y = static_cast<int>(yMod * heightMultiplier) + seaLevel;
 
-            double temperature = this->perlin.octave2D_11(xx * scale * 0.5, zz * scale * 0.5, octaves);
-            double populationMap = this->perlin.octave2D_11(xx, zz, 2);
+            assert(y >= 0 && y < CHUNK_SIZE_Y);
+
+            double temperature = this->perlin.octave2D_11(worldX * scale * 0.5, worldZ * scale * 0.5, octaves);
+            double populationMap = this->perlin.octave2D_11(worldX, worldZ, 2);
 
             BlockID surfaceBlock;
             if (y < realSeaLevel) {
@@ -53,12 +56,15 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
                 for (std::pair<Vec3i, BlockID> prefab : treePrefab) {
                     Vec3i offset = prefab.first;
                     int blockID = prefab.second;
+                    Vec3i pos = {xx + offset.x, y + 1 + offset.y, zz + offset.z};
 
-                    chunk->setBlock(blockID, {xx + offset.x, y + 1 + offset.y, zz + offset.z});
+                    if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 &&
+                        pos.x < CHUNK_SIZE_XZ && pos.y < CHUNK_SIZE_Y && pos.z < CHUNK_SIZE_XZ)
+                    chunk->setBlock(blockID, pos);
                 }
             }
 
-            for (int depth = 1; depth < 16; ++depth) {
+            for (int depth = 1; depth < 4; ++depth) {
                 int depthY = y - depth;
                 if (depthY < 0) break; // Avoid out-of-bounds
 

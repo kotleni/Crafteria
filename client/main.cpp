@@ -8,6 +8,7 @@
 #include <iostream>
 #include <thread>
 #include <unordered_map>
+#include <execution>
 
 #include "Shader.h"
 #include "Image.h"
@@ -63,17 +64,14 @@ glm::vec3 camera_up(0.0f, 1.0f, 0.0f);
  * Cached chunks renderer
  */
 class ChunksRenderer {
-    glm::mat4 projection = glm::perspective(glm::radians(75.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+    glm::mat4 projection = glm::perspective(glm::radians(75.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
     glm::vec3 lightPos = glm::vec3(10.0f, 10.0f, 10.0f);
     glm::mat4 mat4One = glm::mat4(1.0f);
+
+    std::mutex mutex;
 public:
-    ChunksRenderer() {
-
-    }
-
     void renderChunks(World* world, Shader *shader, Shader *waterShader, Vec3i playerPos) {
         std::vector<Chunk *> chunks = world->chunks;
-
         glm::mat4 view = glm::lookAt(world->player->position, world->player->position + camera_front, camera_up);
         glm::vec3 pos;
 
@@ -92,7 +90,7 @@ public:
                 continue;
             }
 
-            double distance = (chunk->position * CHUNK_SIZE_XYZ).distanceTo(playerPos);
+            double distance = (chunk->position * CHUNK_SIZE_XZ).distanceTo({playerPos.x, 0, playerPos.z});
             if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
                 continue;
             }
@@ -104,9 +102,14 @@ public:
             pos.x = chunk->position.x;
             pos.y = chunk->position.y;
             pos.z = chunk->position.z;
-            pos *= CHUNK_SIZE_XYZ;
+            pos *= CHUNK_SIZE_XZ;
 
             for (auto &part: bakedChunk->chunkParts) {
+                if (part.indices.size() > 3000 || part.indices.capacity() > 3000) {
+                    std::cout << "Chunk part indices count/capacity limit. Bug?" << std::endl;
+                    return;
+                }
+
                 if (!part.hasBuffered()) {
                     part.bufferMesh();
                 }
@@ -115,7 +118,7 @@ public:
                 shader->setVec3("pos", pos);
 
                 glBindTexture(GL_TEXTURE_2D, part.blockID - 1);
-                glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, 0);
+                glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
             }
         }
 
@@ -130,19 +133,18 @@ public:
 
         // Draw all liquid
         for (const auto &chunk: chunks) {
-            double distance = (chunk->position * CHUNK_SIZE_XYZ).distanceTo(playerPos);
+            double distance = (chunk->position * CHUNK_SIZE_XZ).distanceTo({playerPos.x, 0, playerPos.z});
             if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
                 continue;
             }
             BakedChunk *bakedChunk = chunk->bakedChunk;
 
             // Chunk is not baked yet?
-            if (bakedChunk == nullptr) continue;
+            if (bakedChunk == nullptr) continue;;
 
-            pos.x = chunk->position.x;
-            pos.y = chunk->position.y;
-            pos.z = chunk->position.z;
-            pos *= CHUNK_SIZE_XYZ;
+            pos.x = chunk->position.x * CHUNK_SIZE_XZ;
+            pos.y = chunk->position.y * CHUNK_SIZE_Y;
+            pos.z = chunk->position.z * CHUNK_SIZE_XZ;
 
             // Draw not-solid
             for (auto &part: bakedChunk->liquidChunkParts) {
@@ -155,7 +157,7 @@ public:
                 waterShader->setVec3("worldPos", pos);
 
                 glBindTexture(GL_TEXTURE_2D, part.blockID - 1);
-                glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, 0);
+                glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
             }
         }
     }
@@ -225,9 +227,9 @@ int main() {
         std::pair("stone", BLOCK_STONE),
         std::pair("sand", BLOCK_SAND),
     };
-    for (int i = 0; i < 10; i++) {
-        loadImageToGPU(blocksData[i].first, blocksData[i].second - 1);
-        std::cout << "Loaded block data " << blocksData[i].first << std::endl;
+    for (auto & i : blocksData) {
+        loadImageToGPU(i.first, i.second - 1);
+        std::cout << "Loaded block data " << i.first << std::endl;
     }
 
     Shader *shader = Shader::load("cube");
@@ -242,8 +244,8 @@ int main() {
 
     glEnable(GL_DEPTH_TEST);
 
-    auto *chunksRenderer = new ChunksRenderer();
-    auto *world = new World(SDL_GetTicks());
+    ChunksRenderer chunksRenderer = ChunksRenderer();
+    auto world = new World(SDL_GetTicks());
 
     bool isMouseRelative = false;
 
@@ -283,7 +285,7 @@ int main() {
             }
         }
 
-        const Uint8 *state = SDL_GetKeyboardState(NULL);
+        const Uint8 *state = SDL_GetKeyboardState(nullptr);
         float camera_speed = 0.01f * globalClock.delta;
         if (state[SDL_SCANCODE_W]) world->player->position += camera_speed * camera_front;
         if (state[SDL_SCANCODE_S]) world->player->position -= camera_speed * camera_front;
@@ -292,7 +294,7 @@ int main() {
 
         // glBindVertexArray(vao);
         Vec3i playerPos = {static_cast<int>(world->player->position.x), static_cast<int>(world->player->position.y), static_cast<int>(world->player->position.z)};
-        chunksRenderer->renderChunks(world, shader, waterShader, playerPos);
+        chunksRenderer.renderChunks(world, shader, waterShader, playerPos);
         SDL_GL_SwapWindow(window);
 
         frameCount++;
