@@ -68,8 +68,10 @@ class ChunksRenderer {
     glm::vec3 lightPos = glm::vec3(10.0f, 10.0f, 10.0f);
     glm::mat4 mat4One = glm::mat4(1.0f);
 
-    std::mutex mutex;
+    std::unordered_map<BlockID, GLuint> glTextures;
 public:
+    ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures): glTextures(glTextures) { }
+
     void renderChunks(World* world, Shader *shader, Shader *waterShader, Vec3i playerPos) {
         // Copy chunks array
         std::vector<Chunk *> chunks = world->chunks;
@@ -123,7 +125,7 @@ public:
 
                 shader->setVec3("pos", pos);
 
-                glBindTexture(GL_TEXTURE_2D, part.blockID - 1);
+                glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
             }
         }
@@ -165,55 +167,76 @@ public:
                 waterShader->setVec3("pos", pos);
                 waterShader->setVec3("worldPos", pos);
 
-                glBindTexture(GL_TEXTURE_2D, part.blockID - 1);
+                glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
             }
         }
     }
 };
 
-void loadImageToGPU(std::string fileName, GLuint textureID) {
-    Image *cobblestoneImage = Image::load(fileName);
-    {
-        GLenum format;
-        if (cobblestoneImage->nrComponents == 1)
-            format = GL_RED;
-        else if (cobblestoneImage->nrComponents == 3)
-            format = GL_RGB;
-        else if (cobblestoneImage->nrComponents == 4)
-            format = GL_RGBA;
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, cobblestoneImage->width, cobblestoneImage->height, 0, format,
-                     GL_UNSIGNED_BYTE, cobblestoneImage->raw);
-        glGenerateMipmap(GL_TEXTURE_2D);
+GLuint loadImageToGPU(std::string fileName) {
+    Image *image = Image::load(fileName);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    }
-    stbi_image_free(cobblestoneImage->raw);
-    delete cobblestoneImage;
+    GLenum format;
+    if (image->nrComponents == 1)
+        format = GL_RED;
+    else if (image->nrComponents == 3)
+        format = GL_RGB;
+    else if (image->nrComponents == 4)
+        format = GL_RGBA;
+
+    GLuint textureName;
+    glGenTextures(1, &textureName);
+
+    glBindTexture(GL_TEXTURE_2D, textureName);
+    glTexImage2D(GL_TEXTURE_2D, 0, format, image->width, image->height, 0, format,
+                 GL_UNSIGNED_BYTE, image->raw);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    stbi_image_free(image->raw);
+    delete image;
+
+    return textureName;
 }
 
-// void GLAPIENTRY
-// MessageCallback( GLenum source,
-//                  GLenum type,
-//                  GLuint id,
-//                  GLenum severity,
-//                  GLsizei length,
-//                  const GLchar* message,
-//                  const void* userParam )
-// {
-//     fprintf( stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
-//              ( type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : "" ),
-//               type, severity, message );
-// }
+void GLAPIENTRY
+MessageCallback( GLenum source,
+                 GLenum type,
+                 GLuint id,
+                 GLenum severity,
+                 GLsizei length,
+                 const GLchar* message,
+                 const void* userParam )
+{
+    // Skip VIDEO memory usage for buffer warning
+    if (severity == 0x826b) return;
+
+    fprintf( stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+             ( type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : "" ),
+              type, severity, message );
+
+    if (severity == 0x9146) {
+        std::cout << "HANG" << std::endl;
+        for (;;);
+    }
+}
 
 int main() {
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window *window = SDL_CreateWindow("Chunk Rendering", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1400, 900,
                                           SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
     SDL_GLContext context = SDL_GL_CreateContext(window);
 
     glewExperimental = GL_TRUE;
@@ -221,24 +244,17 @@ int main() {
 
     // Enable debug
     // TODO: Disable for macOS (force)
-    // glEnable(GL_DEBUG_OUTPUT);
-    // glDebugMessageCallback(MessageCallback, 0);
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(MessageCallback, 0);
 
-    std::pair<std::string, BlockID> blocksData[10] = {
-        std::pair("cobblestone", BLOCK_COBBLESTONE),
-        std::pair("dirt", BLOCK_DIRT),
-        std::pair("grass", BLOCK_GRASS),
-        std::pair("lava", BLOCK_LAVA),
-        std::pair("water", BLOCK_WATER),
-        std::pair("oak_leaves", BLOCK_LEAVES),
-        std::pair("oak_log", BLOCK_LOG),
-        std::pair("oak_planks", BLOCK_PLANKS),
-        std::pair("stone", BLOCK_STONE),
-        std::pair("sand", BLOCK_SAND),
-    };
-    for (auto & i : blocksData) {
-        loadImageToGPU(i.first, i.second - 1);
-        std::cout << "Loaded block data " << i.first << std::endl;
+    // Loading images and store texture names
+    // FIXME(hax): I think this is bad way
+    std::unordered_map<BlockID, GLuint> glTextures;
+    for (const BlockData& data: BLOCKS_DATA) {
+        GLuint textureName = loadImageToGPU(data.name);
+        glTextures[data.blockID] = textureName;
+
+        std::cout << "Texture " << data.name << " loaded as " << textureName << ". (Block ID: " << data.blockID << ")" << std::endl;
     }
 
     Shader *shader = Shader::load("cube");
@@ -253,7 +269,7 @@ int main() {
 
     glEnable(GL_DEPTH_TEST);
 
-    ChunksRenderer chunksRenderer = ChunksRenderer();
+    ChunksRenderer chunksRenderer = ChunksRenderer(glTextures);
     auto world = new World(SDL_GetTicks());
 
     bool isMouseRelative = false;

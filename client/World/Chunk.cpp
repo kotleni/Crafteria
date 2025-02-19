@@ -46,6 +46,20 @@ void Chunk::addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices
 
     // Vec3i worldPos = chunkPos * CHUNK_SIZE_XZ;
 
+    // TODO: Replace foreach with more quick way
+    const BlockData *blockData;
+    for (const BlockData& _blockData: BLOCKS_DATA) {
+        if (_blockData.blockID == currentBlock->getId()) {
+            blockData = &_blockData;
+            break;
+        }
+    }
+
+    if (!blockData) {
+        std::cout << "Can't find block data for " << currentBlock->getId() << std::endl;
+        return;
+    }
+
     Vec3i relativePos = currentBlock->getChunkPosition();
     //     {
     //     currentBlock->position.x, //- worldPos.x,
