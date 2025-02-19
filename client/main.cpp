@@ -71,6 +71,7 @@ class ChunksRenderer {
     std::mutex mutex;
 public:
     void renderChunks(World* world, Shader *shader, Shader *waterShader, Vec3i playerPos) {
+        std::vector<Chunk *> chunks = world->chunks;
         glm::mat4 view = glm::lookAt(world->player->position, world->player->position + camera_front, camera_up);
         glm::vec3 pos;
 
@@ -83,15 +84,15 @@ public:
         glDisable(GL_BLEND);
 
         // Draw all solid & unload if needed
-        std::for_each(std::execution::seq, world->chunks.begin(), world->chunks.end(), [&world, &shader, &playerPos, &pos](Chunk *chunk) {
+        for (const auto &chunk: chunks) {
             if (chunk->isNeedToUnload) {
                 world->unloadChunk(chunk);
-                return;
+                continue;
             }
 
             double distance = (chunk->position * CHUNK_SIZE_XZ).distanceTo(playerPos);
             if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
-                return;
+                continue;
             }
             BakedChunk *bakedChunk = chunk->bakedChunk;
 
@@ -104,6 +105,11 @@ public:
             pos *= CHUNK_SIZE_XZ;
 
             for (auto &part: bakedChunk->chunkParts) {
+                if (part.indices.size() > 3000 || part.indices.capacity() > 3000) {
+                    std::cout << "Chunk part indices count/capacity limit. Bug?" << std::endl;
+                    return;
+                }
+
                 if (!part.hasBuffered()) {
                     part.bufferMesh();
                 }
@@ -114,7 +120,7 @@ public:
                 glBindTexture(GL_TEXTURE_2D, part.blockID - 1);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
             }
-        });
+        }
 
         waterShader->use();
         waterShader->setMat4("view", view);
@@ -126,10 +132,10 @@ public:
         glEnable(GL_BLEND);
 
         // Draw all liquid
-        std::for_each(std::execution::seq, world->chunks.begin(), world->chunks.end(), [&waterShader, &playerPos, &pos](Chunk *chunk) {
+        for (const auto &chunk: chunks) {
             double distance = (chunk->position * CHUNK_SIZE_XZ).distanceTo(playerPos);
             if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
-                return;
+                continue;
             }
             BakedChunk *bakedChunk = chunk->bakedChunk;
 
@@ -153,7 +159,7 @@ public:
                 glBindTexture(GL_TEXTURE_2D, part.blockID - 1);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
             }
-        });
+        }
     }
 };
 
@@ -239,7 +245,7 @@ int main() {
     glEnable(GL_DEPTH_TEST);
 
     ChunksRenderer chunksRenderer = ChunksRenderer();
-    auto *world = new World(SDL_GetTicks());
+    auto world = new World(SDL_GetTicks());
 
     bool isMouseRelative = false;
 

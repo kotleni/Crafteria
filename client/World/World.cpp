@@ -25,18 +25,18 @@ void World::markChunkToUnload(Chunk *chunk) {
 
 // TODO: Review all allocable things
 void World::unloadChunk(Chunk *chunk) {
-    for (int x = 0; x < CHUNK_SIZE_XZ; ++x) {
-        for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
-            for (int z = 0; z < CHUNK_SIZE_XZ; ++z) {
-                Block *block = chunk->blocks[x][y][z];
-                //delete block;
-            }
-        }
-    }
-    delete chunk->bakedChunk;
-    std::ranges::remove(this->chunks, chunk);
-    // this->chunks.erase(std::remove(this->chunks.begin(), this->chunks.end(), chunk), this->chunks.end());
-    std::cout << "Chunk " << chunk->hash << " unloaded" << std::endl;
+    // for (int x = 0; x < CHUNK_SIZE_XZ; ++x) {
+    //     for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
+    //         for (int z = 0; z < CHUNK_SIZE_XZ; ++z) {
+    //             Block *block = chunk->blocks[x][y][z];
+    //             //delete block;
+    //         }
+    //     }
+    // }
+    // delete chunk->bakedChunk;
+    // std::ranges::remove(this->chunks, chunk);
+    // // this->chunks.erase(std::remove(this->chunks.begin(), this->chunks.end(), chunk), this->chunks.end());
+    // std::cout << "Chunk " << chunk->hash << " unloaded" << std::endl;
 }
 
 bool World::areNeighborsGenerated(const Vec3i &chunkPos) {
@@ -102,9 +102,8 @@ void World::updateChunks() {
 
 void World::generateFilledChunk(Vec3i pos) {
     auto *chunk = new Chunk(pos);
-    chunks.push_back(chunk);
-
     this->generator->generateChunk(chunk);
+    chunks.push_back(chunk);
 }
 
 

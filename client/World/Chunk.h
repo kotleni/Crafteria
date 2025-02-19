@@ -63,12 +63,13 @@ public:
 
     [[nodiscard]] bool isBaked() const;
 
-    static void addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices, Vec3i chunkPos, const Block *currentBlock, glm::vec3 faceDirection, glm::vec3 offsets[], BlocksSource *blocksSource, Chunk *chunk);
+    void addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices, Vec3i chunkPos, Block *currentBlock, glm::vec3 faceDirection, glm::vec3 offsets[], BlocksSource *blocksSource, Chunk *chunk);
 
     void bakeChunk(BlocksSource *blocksSource);
 
     [[nodiscard]] bool isBlockInBounds(Vec3i worldPos) const;
 
+    Vec3i getBlockWorldPosition(Block *block) const;
 };
 
 #endif //CHUNK_H
