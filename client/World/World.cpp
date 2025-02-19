@@ -66,7 +66,7 @@ void World::updateChunks() {
                     // generateFilledChunk(chunkPos);
 
                     auto distance = playerChunkPos.distanceTo(chunkPos);
-                    if (distance < targetChunkDistance) {
+                    if (distance < targetChunkDistance && distance < maxDistance) {
                         targetChunkDistance = distance;
                         targetChunkPos = chunkPos;
                         isFound = true;
@@ -81,7 +81,7 @@ void World::updateChunks() {
 
         for (Chunk *chunk: chunks) {
             auto chunkPos = chunk->position;
-            auto distance = round(playerChunkPos.distanceTo(chunkPos)) - 1;
+            auto distance = round(playerChunkPos.distanceTo(chunkPos));
             if (distance > CHUNK_RENDERING_DISTANCE) {
                 markChunkToUnload(chunk);
             }

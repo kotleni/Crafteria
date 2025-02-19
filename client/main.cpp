@@ -71,7 +71,9 @@ class ChunksRenderer {
     std::mutex mutex;
 public:
     void renderChunks(World* world, Shader *shader, Shader *waterShader, Vec3i playerPos) {
+        // Copy chunks array
         std::vector<Chunk *> chunks = world->chunks;
+
         glm::mat4 view = glm::lookAt(world->player->position, world->player->position + camera_front, camera_up);
         glm::vec3 pos;
 
@@ -90,7 +92,11 @@ public:
                 continue;
             }
 
-            double distance = (chunk->position * CHUNK_SIZE_XZ).distanceTo({playerPos.x, 0, playerPos.z});
+            Vec3i playerChunkPos = {
+                playerPos.x / CHUNK_SIZE_XZ, 0,
+                playerPos.z / CHUNK_SIZE_XZ
+            };
+            double distance = (chunk->position).distanceTo(playerChunkPos);
             if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
                 continue;
             }
@@ -121,6 +127,9 @@ public:
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
             }
         }
+
+        // Copy actual chunks array
+        chunks = world->chunks;
 
         waterShader->use();
         waterShader->setMat4("view", view);
