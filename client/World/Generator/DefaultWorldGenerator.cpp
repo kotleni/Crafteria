@@ -7,18 +7,21 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
     constexpr int seaLevel = 64;
     constexpr int realSeaLevel = 72;
 
-    // int baseX = chunk->position.x * CHUNK_SIZE_XZ;
-    // int baseZ = chunk->position.z * CHUNK_SIZE_XZ;
+    int chunkWorldX = chunk->position.x * CHUNK_SIZE_XZ;
+    int chunkWorldZ = chunk->position.z * CHUNK_SIZE_XZ;
 
     for (int xx = 0; xx < CHUNK_SIZE_XZ; ++xx) {
         for (int zz = 0; zz < CHUNK_SIZE_XZ; ++zz) {
-            double yMod = this->perlin.octave2D_01(xx * scale, zz * scale, octaves);
+            int worldX = chunkWorldX + xx;
+            int worldZ = chunkWorldZ + zz;
+
+            double yMod = this->perlin.octave2D_01(worldX * scale, worldZ * scale, octaves);
             int y = static_cast<int>(yMod * heightMultiplier) + seaLevel;
 
             assert(y >= 0 && y < CHUNK_SIZE_Y);
 
-            double temperature = this->perlin.octave2D_11(xx * scale * 0.5, zz * scale * 0.5, octaves);
-            double populationMap = this->perlin.octave2D_11(xx, zz, 2);
+            double temperature = this->perlin.octave2D_11(worldX * scale * 0.5, worldZ * scale * 0.5, octaves);
+            double populationMap = this->perlin.octave2D_11(worldX, worldZ, 2);
 
             BlockID surfaceBlock;
             if (y < realSeaLevel) {

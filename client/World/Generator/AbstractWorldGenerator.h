@@ -11,7 +11,7 @@ public:
     int seed;
     siv::PerlinNoise perlin;
 
-    AbstractWorldGenerator(int seed) {
+    explicit AbstractWorldGenerator(int seed) {
         this->seed = seed;
         this->perlin = siv::PerlinNoise(seed);
     }
