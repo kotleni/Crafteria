@@ -97,7 +97,7 @@ public:
             BakedChunk *bakedChunk = chunk->bakedChunk;
 
             // Chunk is not baked yet?
-            if (bakedChunk == nullptr) return;
+            if (bakedChunk == nullptr) continue;
 
             pos.x = chunk->position.x;
             pos.y = chunk->position.y;
@@ -140,7 +140,7 @@ public:
             BakedChunk *bakedChunk = chunk->bakedChunk;
 
             // Chunk is not baked yet?
-            if (bakedChunk == nullptr) return;;
+            if (bakedChunk == nullptr) continue;;
 
             pos.x = chunk->position.x * CHUNK_SIZE_XZ;
             pos.y = chunk->position.y * CHUNK_SIZE_Y;
