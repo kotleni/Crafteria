@@ -5,7 +5,7 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
     constexpr float heightMultiplier = 8.0f;
     constexpr int octaves = 5;
     constexpr int seaLevel = 64;
-    constexpr int realSeaLevel = 72;
+    constexpr int realSeaLevel = 67;
 
     int chunkWorldX = chunk->position.x * CHUNK_SIZE_XZ;
     int chunkWorldZ = chunk->position.z * CHUNK_SIZE_XZ;
@@ -56,12 +56,15 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
                 for (std::pair<Vec3i, BlockID> prefab : treePrefab) {
                     Vec3i offset = prefab.first;
                     int blockID = prefab.second;
+                    Vec3i pos = {xx + offset.x, y + 1 + offset.y, zz + offset.z};
 
-                    chunk->setBlock(blockID, {xx + offset.x, y + 1 + offset.y, zz + offset.z});
+                    if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 &&
+                        pos.x < CHUNK_SIZE_XZ && pos.y < CHUNK_SIZE_Y && pos.z < CHUNK_SIZE_XZ)
+                    chunk->setBlock(blockID, pos);
                 }
             }
 
-            for (int depth = 1; depth < 16; ++depth) {
+            for (int depth = 1; depth < 4; ++depth) {
                 int depthY = y - depth;
                 if (depthY < 0) break; // Avoid out-of-bounds
 
