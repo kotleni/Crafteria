@@ -64,7 +64,7 @@ glm::vec3 camera_up(0.0f, 1.0f, 0.0f);
  * Cached chunks renderer
  */
 class ChunksRenderer {
-    glm::mat4 projection = glm::perspective(glm::radians(75.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+    glm::mat4 projection = glm::perspective(glm::radians(75.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
     glm::vec3 lightPos = glm::vec3(10.0f, 10.0f, 10.0f);
     glm::mat4 mat4One = glm::mat4(1.0f);
 
