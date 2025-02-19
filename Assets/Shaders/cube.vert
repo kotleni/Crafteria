@@ -8,6 +8,7 @@ layout (location = 3) in float aLight;
 out vec2 TexCoord;
 out vec3 FragPos;
 out float vLight;
+out float viewDistance;
 
 uniform vec3 pos;
 uniform mat4 view;
@@ -19,4 +20,7 @@ void main() {
 
     vec4 absolutePos = vec4(pos + aPos, 1.0);
     gl_Position = projection * view * absolutePos;
+
+    vec4 viewPos = view * absolutePos;
+    viewDistance = length(viewPos.xyz);
 }
