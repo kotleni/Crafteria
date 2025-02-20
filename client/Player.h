@@ -7,7 +7,7 @@
 
 class Player {
 public:
-    Player(): position({8, CHUNK_SIZE_Y , 8}) { }
+    Player(): position({8, CHUNK_SIZE_Y - 30 , 8}) { }
 
     glm::vec3 position;
 };

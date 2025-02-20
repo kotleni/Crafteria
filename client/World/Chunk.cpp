@@ -69,11 +69,18 @@ void Chunk::addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices
 
     float normalizedLight = 1.0f;
 
-    // Reduce light for under solid blocks
-    auto topBlock = blocksSource->getBlock(this->getBlockWorldPosition(currentBlock) + Vec3i(0, 1, 0));
-    if (topBlock && !topBlock->isSolid()) normalizedLight /= 4;
+    // TODO: Move it from addFace to function what call it
+    Vec3i blockPos = this->getBlockWorldPosition(currentBlock);
+    // Check if any blocks on top cover this block
+    for (int y = CHUNK_SIZE_Y - 1; y > blockPos.y; y--) {
+        auto anotherBlock = blocksSource->getBlock(Vec3i(blockPos.x, y, blockPos.z));
+        if (anotherBlock && anotherBlock->getId() != 0 && anotherBlock->isSolid()) { // Find cover
+            normalizedLight /= 1.2f; // Reduce light
+        }
+    }
+
     // Reduce light for sides
-    else if (faceDirection.y == 0) normalizedLight /= 2;
+    if (faceDirection.y == 0) normalizedLight /= 2;
 
     float finalLight = normalizedLight;
 
