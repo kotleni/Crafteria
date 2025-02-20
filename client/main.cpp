@@ -19,6 +19,10 @@
 #include "World/World.h"
 #include "World/BlocksIds.h"
 
+#include "GUI/imgui.h"
+#include "GUI/imgui_impl_sdl2.h"
+#include "GUI/imgui_impl_opengl3.h"
+
 struct Clock
 {
     uint32_t last_tick_time = 0;
@@ -242,6 +246,20 @@ int main() {
     glewExperimental = GL_TRUE;
     glewInit();
 
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    ImGui::StyleColorsDark();
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplSDL2_InitForOpenGL(window, context);
+    ImGui_ImplOpenGL3_Init("#version 330 core");
+
+    bool isShowDebugMenu = true;
+
     // Enable debug
     // TODO: Disable for macOS (force)
     glEnable(GL_DEBUG_OUTPUT);
@@ -289,7 +307,10 @@ int main() {
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
+            ImGui_ImplSDL2_ProcessEvent(&event);
+
             if (event.type == SDL_QUIT) running = false;
+            if (isMouseRelative)
             processMouseMotion(event, camera_front);
 
             if (event.type == SDL_KEYDOWN) {
@@ -320,6 +341,30 @@ int main() {
         // glBindVertexArray(vao);
         Vec3i playerPos = {static_cast<int>(world->player->position.x), static_cast<int>(world->player->position.y), static_cast<int>(world->player->position.z)};
         chunksRenderer.renderChunks(world, shader, waterShader, playerPos);
+
+        // Start the Dear ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
+
+        if (isShowDebugMenu) {
+            ImGui::Begin("Debug");
+
+            ImGui::Text("Chunks loaded: %d", world->chunks.size());
+            ImGui::Text("FPS: %d", stableFrameCount);
+            ImGui::Text("Seed: %d", world->seedValue);
+            ImGui::Text("Position: %d, %d, %d", playerPos.x, playerPos.y, playerPos.z);
+
+            if (ImGui::Button("Halt")) {
+                running = false;
+            }
+
+            ImGui::End();
+        }
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         SDL_GL_SwapWindow(window);
 
         frameCount++;
@@ -328,13 +373,15 @@ int main() {
 
             stableFrameCount = frameCount;
             frameCount = 0;
-
-            std::string title = "FPS: " + std::to_string(stableFrameCount);
-            title += " | Chunks loaded: " + std::to_string(world->chunks.size());
-            title += " | POS: " + std::to_string(world->player->position.x) + " " + std::to_string(world->player->position.y) + " " + std::to_string(world->player->position.z);
-            SDL_SetWindowTitle(window, title.c_str());
         }
     }
+    // Cleanup
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+
+    SDL_GL_DeleteContext(context);
+    SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;
 }
