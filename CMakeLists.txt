@@ -26,5 +26,13 @@ add_executable(crafteria
         client/World/BakedChunkPart.cpp
         client/World/BakedChunk.cpp
         client/World/Generator/DefaultWorldGenerator.cpp
+
+        # imgui
+        client/GUI/imgui.cpp
+        client/GUI/imgui_impl_sdl2.cpp
+        client/GUI/imgui_impl_opengl3.cpp
+        client/GUI/imgui_widgets.cpp
+        client/GUI/imgui_tables.cpp
+        client/GUI/imgui_draw.cpp
 )
 target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} OpenGL::GL)
