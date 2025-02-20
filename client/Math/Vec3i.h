@@ -3,10 +3,13 @@
 
 #include <cmath>
 #include <iomanip>
+#include <glm/glm.hpp>
 
 class Vec3i {
 public:
     Vec3i(int x, int y, int z);
+
+    explicit Vec3i(glm::vec<3, int> vec);
 
     bool operator==(const Vec3i &other) const;
     Vec3i operator-(const Vec3i &other) const;
