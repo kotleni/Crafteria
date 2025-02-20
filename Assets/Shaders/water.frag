@@ -19,7 +19,7 @@ void main() {
 
     float fogMaxDist = 70.0;
     float fogMinDist = 12.0;
-    vec4 fogColor = vec4(0.4313, 0.6941, 1.0, 1.0);
+    vec4 fogColor = vec4(0.623, 0.734, 0.785, 1.0);
 
     // Calculate fog
     float fogFactor = (fogMaxDist - viewDistance) /
