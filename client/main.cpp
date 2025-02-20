@@ -74,9 +74,13 @@ class ChunksRenderer {
 
     std::unordered_map<BlockID, GLuint> glTextures;
 public:
+    int lastCountOfTotalVerticles = 0;
+
     ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures): glTextures(glTextures) { }
 
     void renderChunks(World* world, Shader *shader, Shader *waterShader, Vec3i playerPos) {
+        lastCountOfTotalVerticles = 0;
+
         // Copy chunks array
         std::vector<Chunk *> chunks = world->chunks;
 
@@ -131,6 +135,7 @@ public:
 
                 glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
+                lastCountOfTotalVerticles += part.vertices.size() / 9; // Verticles count
             }
         }
 
@@ -173,6 +178,7 @@ public:
 
                 glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
+                lastCountOfTotalVerticles += part.vertices.size() / 9; // Verticles count
             }
         }
     }
@@ -351,6 +357,7 @@ int main() {
             ImGui::Begin("Debug");
 
             ImGui::Text("Chunks loaded: %d", world->chunks.size());
+            ImGui::Text("Vertices rendered: %dk", chunksRenderer.lastCountOfTotalVerticles / 1000);
             ImGui::Text("FPS: %d", stableFrameCount);
             ImGui::Text("Seed: %d", world->seedValue);
             ImGui::Text("Position: %d, %d, %d", playerPos.x, playerPos.y, playerPos.z);
