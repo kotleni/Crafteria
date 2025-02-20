@@ -1,11 +1,31 @@
 #include "DefaultWorldGenerator.h"
 
+struct BiomeConfig {
+    unsigned short id;
+    std::string name;
+
+    BlockID topBlockId;
+    BlockID mediumBlockId;
+
+    float baseLevel;
+    float heightMultiplier;
+
+    bool isWatery;
+};
+
+
+std::vector<BiomeConfig> biomeConfigs = {
+    { 0, "forest", BLOCK_GRASS, BLOCK_DIRT, 64, 8.0f, true },
+    { 2, "plain", BLOCK_GRASS, BLOCK_DIRT, 70, 4.0f, true },
+    { 3, "desert", BLOCK_SAND, BLOCK_SAND, 64, 7.0f, false },
+    { 4, "mountains", BLOCK_COBBLESTONE, BLOCK_COBBLESTONE, 64, 16.0f, false },
+};
+
 void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
     constexpr float scale = 0.08f;
-    constexpr float heightMultiplier = 8.0f;
-    constexpr int octaves = 5;
-    constexpr int seaLevel = 64;
+    constexpr int octaves = 6;
     constexpr int realSeaLevel = 67;
+    constexpr float biomeBlendScale = 0.009f;
 
     int chunkWorldX = chunk->position.x * CHUNK_SIZE_XZ;
     int chunkWorldZ = chunk->position.z * CHUNK_SIZE_XZ;
@@ -15,72 +35,57 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
             int worldX = chunkWorldX + xx;
             int worldZ = chunkWorldZ + zz;
 
+            double biomeNoise = this->perlin.octave2D_01(worldX * biomeBlendScale, worldZ * biomeBlendScale, octaves);
+            double biomeLerpFactor = biomeNoise * (biomeConfigs.size() - 1);
+            int biomeIndex1 = static_cast<int>(biomeLerpFactor);
+            int biomeIndex2 = std::min(biomeIndex1 + 1, static_cast<int>(biomeConfigs.size() - 1));
+            float blendFactor = biomeLerpFactor - biomeIndex1;
+
+            BiomeConfig &biome1 = biomeConfigs[biomeIndex1];
+            BiomeConfig &biome2 = biomeConfigs[biomeIndex2];
+            BiomeConfig &activeBiome = blendFactor > 0.5 ? biome2 : biome1;
+
+            float heightMultiplier = biome1.heightMultiplier * (1.0 - blendFactor) + biome2.heightMultiplier * blendFactor;
+            float baseLevel = biome1.baseLevel * (1.0 - blendFactor) + biome2.baseLevel * blendFactor;
+
             double yMod = this->perlin.octave2D_01(worldX * scale, worldZ * scale, octaves);
-            int y = static_cast<int>(yMod * heightMultiplier) + seaLevel;
+            int y = static_cast<int>(yMod * heightMultiplier) + baseLevel;
 
             assert(y >= 0 && y < CHUNK_SIZE_Y);
 
-            double temperature = this->perlin.octave2D_11(worldX * scale * 0.5, worldZ * scale * 0.5, octaves);
-            double populationMap = this->perlin.octave2D_11(worldX, worldZ, 2);
-
-            BlockID surfaceBlock;
-            if (y < realSeaLevel) {
-                surfaceBlock = BLOCK_DIRT;
-            } else if (temperature > 0.7) {
-                surfaceBlock = BLOCK_STONE;
-            } else {
-                surfaceBlock = BLOCK_GRASS;
-            }
+            BlockID surfaceBlock = (y >= realSeaLevel) ? activeBiome.topBlockId : activeBiome.mediumBlockId;
+            BlockID mediumBlock = activeBiome.mediumBlockId;
 
             chunk->setBlock(surfaceBlock, {xx, y, zz});
 
-            if (y > realSeaLevel && populationMap > 0.54) {
-                std::pair<Vec3i, BlockID> treePrefab[] = {
-                    std::make_pair(Vec3i(0, 0, 0), BLOCK_LOG),
-                    std::make_pair(Vec3i(0, 1, 0), BLOCK_LOG),
-                    std::make_pair(Vec3i(0, 2, 0), BLOCK_LOG),
-                    std::make_pair(Vec3i(0, 3, 0), BLOCK_LOG),
-                    std::make_pair(Vec3i(0, 4, 0), BLOCK_LOG),
-
-                    std::make_pair(Vec3i(1, 4, 0), BLOCK_LEAVES),
-                    std::make_pair(Vec3i(-1, 4, 0), BLOCK_LEAVES),
-                    std::make_pair(Vec3i(0, 4, 1), BLOCK_LEAVES),
-                    std::make_pair(Vec3i(0, 4, -1), BLOCK_LEAVES),
-                    std::make_pair(Vec3i(1, 4, 1), BLOCK_LEAVES),
-                    std::make_pair(Vec3i(-1, 4, -1), BLOCK_LEAVES),
-                    std::make_pair(Vec3i(1, 4, -1), BLOCK_LEAVES),
-                    std::make_pair(Vec3i(-1, 4, 1), BLOCK_LEAVES),
-
-                    std::make_pair(Vec3i(0, 5, 0), BLOCK_LEAVES)
-                };
-                for (std::pair<Vec3i, BlockID> prefab : treePrefab) {
-                    Vec3i offset = prefab.first;
-                    int blockID = prefab.second;
-                    Vec3i pos = {xx + offset.x, y + 1 + offset.y, zz + offset.z};
-
-                    if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 &&
-                        pos.x < CHUNK_SIZE_XZ && pos.y < CHUNK_SIZE_Y && pos.z < CHUNK_SIZE_XZ)
-                    chunk->setBlock(blockID, pos);
-                }
-            }
-
             for (int depth = 1; depth < 4; ++depth) {
                 int depthY = y - depth;
-                if (depthY < 0) break; // Avoid out-of-bounds
-
-                if (depth < 3) {
-                    chunk->setBlock(BLOCK_DIRT, {xx, depthY, zz});
-                } else {
-                    chunk->setBlock(BLOCK_STONE, {xx, depthY, zz});
-                }
+                if (depthY < 0) break;
+                chunk->setBlock(depth < 3 ? mediumBlock : BLOCK_STONE, {xx, depthY, zz});
             }
 
-            // Add water if below sea level
             if (y < realSeaLevel) {
                 for (int waterY = y; waterY <= realSeaLevel; ++waterY) {
                     Vec3i pos = {xx, waterY, zz};
                     if (chunk->getBlock(pos) == nullptr)
-                        chunk->setBlock(BLOCK_WATER, pos); // Water block
+                        chunk->setBlock(BLOCK_WATER, pos);
+                }
+            } else if (activeBiome.id == 0) { // FIXME: HAX
+                double populationMap = this->perlin.octave2D_11(worldX, worldZ, 2);
+                if (populationMap > 0.54) {
+                    std::pair<Vec3i, BlockID> treePrefab[] = {
+                        { {0, 0, 0}, BLOCK_LOG }, { {0, 1, 0}, BLOCK_LOG }, { {0, 2, 0}, BLOCK_LOG },
+                        { {0, 3, 0}, BLOCK_LOG }, { {0, 4, 0}, BLOCK_LOG }, { {1, 4, 0}, BLOCK_LEAVES },
+                        { {-1, 4, 0}, BLOCK_LEAVES }, { {0, 4, 1}, BLOCK_LEAVES }, { {0, 4, -1}, BLOCK_LEAVES },
+                        { {1, 4, 1}, BLOCK_LEAVES }, { {-1, 4, -1}, BLOCK_LEAVES }, { {1, 4, -1}, BLOCK_LEAVES },
+                        { {-1, 4, 1}, BLOCK_LEAVES }, { {0, 5, 0}, BLOCK_LEAVES }
+                    };
+                    for (auto &prefab : treePrefab) {
+                        Vec3i offset = prefab.first;
+                        Vec3i pos = {xx + offset.x, y + 1 + offset.y, zz + offset.z};
+                        if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 && pos.x < CHUNK_SIZE_XZ && pos.y < CHUNK_SIZE_Y && pos.z < CHUNK_SIZE_XZ)
+                            chunk->setBlock(prefab.second, pos);
+                    }
                 }
             }
         }
