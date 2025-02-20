@@ -75,7 +75,7 @@ void World::updateChunks() {
             }
         }
 
-        if (isFound) {
+        if (isFound && this->isChunkGenerationEnabled) {
             generateFilledChunk(targetChunkPos);
         }
 
@@ -86,7 +86,7 @@ void World::updateChunks() {
                 markChunkToUnload(chunk);
             }
 
-            if (!chunk->isBaked() && areNeighborsGenerated(chunkPos) && !chunk->isNeedToUnload) {
+            if (!chunk->isBaked() && areNeighborsGenerated(chunkPos) && !chunk->isNeedToUnload && this->isChunkBakingEnabled) {
                 chunk->bakeChunk(this);
             }
         }

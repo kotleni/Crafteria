@@ -355,6 +355,11 @@ int main() {
             ImGui::Text("Seed: %d", world->seedValue);
             ImGui::Text("Position: %d, %d, %d", playerPos.x, playerPos.y, playerPos.z);
 
+            ImGui::NewLine();
+
+            ImGui::Checkbox("Generate new chunks", &world->isChunkGenerationEnabled);
+            ImGui::Checkbox("Bake new chunks", &world->isChunkBakingEnabled);
+
             if (ImGui::Button("Halt")) {
                 running = false;
             }
