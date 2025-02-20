@@ -14,11 +14,13 @@ struct BiomeConfig {
 };
 
 
+// Ordering is matter, bcs chunks changes smoothly depends by order
 std::vector<BiomeConfig> biomeConfigs = {
     { 0, "forest", BLOCK_GRASS, BLOCK_DIRT, 64, 8.0f, true },
     { 2, "plain", BLOCK_GRASS, BLOCK_DIRT, 70, 4.0f, true },
     { 3, "desert", BLOCK_SAND, BLOCK_SAND, 64, 7.0f, false },
-    { 4, "mountains", BLOCK_COBBLESTONE, BLOCK_COBBLESTONE, 64, 16.0f, false },
+    { 5, "ocean", BLOCK_SAND, BLOCK_SAND, 44, 16.0f, true },
+    { 4, "mountains", BLOCK_STONE, BLOCK_STONE, 64, 16.0f, false },
 };
 
 void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
