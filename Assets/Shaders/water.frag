@@ -18,7 +18,7 @@ void main() {
     vec4 realColor = vec4(color, 0.5);
 
     float fogMaxDist = 70.0;
-    float fogMinDist = 12.0;
+    float fogMinDist = 32.0;
     vec4 fogColor = vec4(0.623, 0.734, 0.785, 1.0);
 
     // Calculate fog

@@ -15,7 +15,7 @@ void main() {
     vec3 color = vec3(rgba.x, rgba.y, rgba.z);
 
     float fogMaxDist = 70.0;
-    float fogMinDist = 12.0;
+    float fogMinDist = 32.0;
     vec3 fogColor = vec3(0.623, 0.734, 0.785);
 
     // Calculate fog
