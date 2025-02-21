@@ -116,6 +116,10 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
                 for (int i = 0; i < 6; ++i) {
                     // 6 faces per block
                     glm::vec3 faceDirection = faceDirections[i];
+
+                    // Skip bottom face for bottom block
+                    if (y == 0 && faceDirection.y == -1) continue;
+
                     std::vector<GLfloat> vertices;
                     std::vector<GLuint> indices;
 
@@ -144,13 +148,15 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
                             };
                             addFace(&vertices, &indices, this->position, currentBlock, faceDirection, offsets, blocksSource, this);
                         } else if (faceDirection == glm::vec3(0, -1, 0)) {
-                            glm::vec3 offsets[] = {
-                                glm::vec3(-1, -1, -1),
-                                glm::vec3(1, -1, -1),
-                                glm::vec3(1, -1, 1),
-                                glm::vec3(-1, -1, 1),
-                            };
-                            addFace(&vertices, &indices, this->position, currentBlock, faceDirection, offsets, blocksSource, this);
+                           // if (y != 0) { // Do not place bottom face on bottom blocks
+                                glm::vec3 offsets[] = {
+                                    glm::vec3(-1, -1, -1),
+                                    glm::vec3(1, -1, -1),
+                                    glm::vec3(1, -1, 1),
+                                    glm::vec3(-1, -1, 1),
+                                };
+                                addFace(&vertices, &indices, this->position, currentBlock, faceDirection, offsets, blocksSource, this);
+                           // }
                         } else if (faceDirection == glm::vec3(0, 1, 0)) {
                             glm::vec3 offsets[] = {
                                 glm::vec3(-1, 1, -1),
@@ -183,6 +189,7 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
                         indices.push_back(vertexOffset + 2);
                         indices.push_back(vertexOffset + 3);
                         indices.push_back(vertexOffset + 0);
+
                     }
 
                     // If there are vertices and indices for this face, create a part and add it to the baked chunk
