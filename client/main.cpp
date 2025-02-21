@@ -64,6 +64,62 @@ void processMouseMotion(SDL_Event &event, glm::vec3 &camera_front) {
 glm::vec3 camera_front(0.0f, 0.0f, -1.0f);
 glm::vec3 camera_up(0.0f, 1.0f, 0.0f);
 
+struct Plane {
+    glm::vec3 normal;
+    float distance;
+
+    // Returns true if a point is in front of the plane
+    bool isInFront(const glm::vec3 &point) const {
+        return glm::dot(normal, point) + distance >= 0;
+    }
+};
+
+// Extracts the frustum planes from the view-projection matrix
+std::array<Plane, 6> extractFrustumPlanes(const glm::mat4 &matrix) {
+    std::array<Plane, 6> planes;
+
+    for (int i = 0; i < 6; i++) {
+        int sign = (i % 2 == 0) ? 1 : -1;
+        planes[i].normal = glm::vec3(
+            matrix[0][3] + sign * matrix[0][i / 2],
+            matrix[1][3] + sign * matrix[1][i / 2],
+            matrix[2][3] + sign * matrix[2][i / 2]
+        );
+        planes[i].distance = matrix[3][3] + sign * matrix[3][i / 2];
+
+        // Normalize the plane
+        float length = glm::length(planes[i].normal);
+        planes[i].normal /= length;
+        planes[i].distance /= length;
+    }
+
+    return planes;
+}
+
+bool isChunkInFrustum(const std::array<Plane, 6> &frustumPlanes, const glm::vec3 &chunkMin, const glm::vec3 &chunkMax) {
+    for (const auto &plane : frustumPlanes) {
+        // Check if all 8 corners of the chunk are outside the plane
+        int outCount = 0;
+        for (int x = 0; x < 2; x++) {
+            for (int y = 0; y < 2; y++) {
+                for (int z = 0; z < 2; z++) {
+                    glm::vec3 corner = glm::vec3(
+                        x ? chunkMax.x : chunkMin.x,
+                        y ? chunkMax.y : chunkMin.y,
+                        z ? chunkMax.z : chunkMin.z
+                    );
+                    if (!plane.isInFront(corner)) {
+                        outCount++;
+                    }
+                }
+            }
+        }
+        // If all corners are outside one plane, the chunk is fully outside the frustum
+        if (outCount == 8) return false;
+    }
+    return true;
+}
+
 /**
  * Cached chunks renderer
  */
@@ -85,7 +141,10 @@ public:
         std::vector<Chunk *> chunks = world->chunks;
 
         glm::mat4 view = glm::lookAt(world->player->position, world->player->position + camera_front, camera_up);
+        glm::mat4 viewProjection = projection * view;
         glm::vec3 pos;
+
+        auto frustumPlanes = extractFrustumPlanes(viewProjection);
 
         shader->use();
         shader->setMat4("view", view);
@@ -115,10 +174,17 @@ public:
             // Chunk is not baked yet?
             if (bakedChunk == nullptr) continue;
 
-            pos.x = chunk->position.x;
-            pos.y = chunk->position.y;
-            pos.z = chunk->position.z;
-            pos *= CHUNK_SIZE_XZ;
+            pos.x = chunk->position.x * CHUNK_SIZE_XZ;
+            pos.y = chunk->position.y * CHUNK_SIZE_Y;
+            pos.z = chunk->position.z * CHUNK_SIZE_XZ;
+
+            glm::vec3 chunkMin = pos;
+            glm::vec3 chunkMax = pos + glm::vec3(CHUNK_SIZE_XZ, CHUNK_SIZE_Y, CHUNK_SIZE_XZ);
+
+            // Frustum culling check
+            if (!isChunkInFrustum(frustumPlanes, chunkMin, chunkMax)) {
+                continue;
+            }
 
             for (auto &part: bakedChunk->chunkParts) {
                 if (part.indices.size() > 3000 || part.indices.capacity() > 3000) {
