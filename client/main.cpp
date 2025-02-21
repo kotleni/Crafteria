@@ -43,7 +43,7 @@ float pitch = 0.0f;
 float lastX = 400, lastY = 300;
 bool firstMouse = true;
 
-void processMouseMotion(SDL_Event &event, glm::vec3 &camera_front) {
+void processMouseMotion(SDL_Event &event, Player &player) {
     if (event.type == SDL_MOUSEMOTION) {
         float xoffset = event.motion.xrel * 0.1f;
         float yoffset = -event.motion.yrel * 0.1f;
@@ -57,12 +57,10 @@ void processMouseMotion(SDL_Event &event, glm::vec3 &camera_front) {
         front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
         front.y = sin(glm::radians(pitch));
         front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-        camera_front = glm::normalize(front);
+        player.camera_front = glm::normalize(front);
+        player.updateViewMatrix();
     }
 }
-
-glm::vec3 camera_front(0.0f, 0.0f, -1.0f);
-glm::vec3 camera_up(0.0f, 1.0f, 0.0f);
 
 struct Plane {
     glm::vec3 normal;
@@ -141,17 +139,16 @@ public:
         // Copy chunks array
         std::vector<Chunk *> chunks = world->chunks;
 
-        glm::mat4 view = glm::lookAt(world->player->position, world->player->position + camera_front, camera_up);
-        glm::mat4 viewProjection = projection * view;
+        glm::mat4 viewProjection = projection * world->player->getViewMatrix();
         glm::vec3 pos;
 
         auto frustumPlanes = extractFrustumPlanes(viewProjection);
 
         shader->use();
-        shader->setMat4("view", view);
+        shader->setMat4("view", world->player->getViewMatrix());
         shader->setMat4("projection", projection);
         shader->setVec3("lightPos", this->lightPos);
-        shader->setVec3("viewPos", world->player->position);
+        shader->setVec3("viewPos", world->player->getPosition());
 
         glDisable(GL_BLEND);
 
@@ -214,10 +211,10 @@ public:
         chunks = world->chunks;
 
         waterShader->use();
-        waterShader->setMat4("view", view);
+        waterShader->setMat4("view", world->player->getViewMatrix());
         waterShader->setMat4("projection", projection);
         waterShader->setVec3("lightPos", this->lightPos);
-        waterShader->setVec3("viewPos", world->player->position);
+        waterShader->setVec3("viewPos", world->player->getPosition());
         waterShader->setFloat("time", SDL_GetTicks() / 1000.0f);
 
         glEnable(GL_BLEND);
@@ -389,7 +386,7 @@ int main() {
 
             if (event.type == SDL_QUIT) running = false;
             if (isMouseRelative)
-            processMouseMotion(event, camera_front);
+            processMouseMotion(event, *world->player);
 
             if (event.type == SDL_KEYDOWN) {
                 switch (event.key.keysym.sym) {
@@ -411,13 +408,13 @@ int main() {
 
         const Uint8 *state = SDL_GetKeyboardState(nullptr);
         float camera_speed = 0.01f * globalClock.delta;
-        if (state[SDL_SCANCODE_W]) world->player->position += camera_speed * camera_front;
-        if (state[SDL_SCANCODE_S]) world->player->position -= camera_speed * camera_front;
-        if (state[SDL_SCANCODE_A]) world->player->position -= glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
-        if (state[SDL_SCANCODE_D]) world->player->position += glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
+        if (state[SDL_SCANCODE_W]) world->player->moveRelative(camera_speed * world->player->camera_front);
+        if (state[SDL_SCANCODE_S]) world->player->moveRelative(-(camera_speed * world->player->camera_front));
+        if (state[SDL_SCANCODE_A]) world->player->moveRelative(-(glm::normalize(glm::cross(world->player->camera_front, world->player->camera_up)) * camera_speed));
+        if (state[SDL_SCANCODE_D]) world->player->moveRelative(glm::normalize(glm::cross(world->player->camera_front, world->player->camera_up)) * camera_speed);
 
         // glBindVertexArray(vao);
-        Vec3i playerPos = {static_cast<int>(world->player->position.x), static_cast<int>(world->player->position.y), static_cast<int>(world->player->position.z)};
+        Vec3i playerPos = {static_cast<int>(world->player->getPosition().x), static_cast<int>(world->player->getPosition().y), static_cast<int>(world->player->getPosition().z)};
         chunksRenderer.renderChunks(world, shader, waterShader, playerPos);
 
         // Start the Dear ImGui frame

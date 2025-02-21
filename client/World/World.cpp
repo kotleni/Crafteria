@@ -50,8 +50,8 @@ void World::updateChunks() {
     while (true) {
         // Vec3i playerPos = {static_cast<int>(this->player->position.x), static_cast<int>(this->player->position.y), static_cast<int>(this->player->position.z)};
         Vec3i playerChunkPos = {
-            static_cast<int>(this->player->position.x / CHUNK_SIZE_XZ), 0,
-            static_cast<int>(this->player->position.z / CHUNK_SIZE_XZ)
+            static_cast<int>(this->player->getPosition().x / CHUNK_SIZE_XZ), 0,
+            static_cast<int>(this->player->getPosition().z / CHUNK_SIZE_XZ)
         };
 
         // Find not generated chunks around player
