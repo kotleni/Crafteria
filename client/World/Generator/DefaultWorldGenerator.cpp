@@ -70,7 +70,7 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
                     if (chunk->getBlock(pos) == nullptr)
                         chunk->setBlock(BLOCK_WATER, pos);
                 }
-            } else if (activeBiome.id == 0) { // FIXME: HAX
+            } else if (activeBiome.id == 0 || activeBiome.id == 2) { // FIXME: HAX
                 double populationMap = this->perlin.octave2D_11(worldX, worldZ, 2);
                 if (populationMap > 0.54) {
                     std::pair<Vec3i, BlockID> treePrefab[] = {
