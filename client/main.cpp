@@ -360,7 +360,7 @@ int main() {
     glEnable(GL_DEPTH_TEST);
 
     ChunksRenderer chunksRenderer = ChunksRenderer(glTextures);
-    auto world = new World(SDL_GetTicks());
+    auto world = new World(255);
 
     bool isMouseRelative = false;
 
