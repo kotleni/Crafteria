@@ -130,6 +130,7 @@ class ChunksRenderer {
 
     std::unordered_map<BlockID, GLuint> glTextures;
 public:
+    bool isUseSingleTexture = false;
     int lastCountOfTotalVerticles = 0;
 
     ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures): glTextures(glTextures) { }
@@ -153,6 +154,9 @@ public:
         shader->setVec3("viewPos", world->player->position);
 
         glDisable(GL_BLEND);
+
+        if (isUseSingleTexture)
+            glBindTexture(GL_TEXTURE_2D, 1);
 
         // Draw all solid & unload if needed
         for (const auto &chunk: chunks) {
@@ -199,7 +203,8 @@ public:
 
                 shader->setVec3("pos", pos);
 
-                glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
+                if (!isUseSingleTexture)
+                    glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
                 lastCountOfTotalVerticles += part.vertices.size() / 9; // Verticles count
             }
@@ -242,7 +247,8 @@ public:
                 waterShader->setVec3("pos", pos);
                 waterShader->setVec3("worldPos", pos);
 
-                glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
+                if (!isUseSingleTexture)
+                    glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
                 glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
                 lastCountOfTotalVerticles += part.vertices.size() / 9; // Verticles count
             }
@@ -432,6 +438,7 @@ int main() {
 
             ImGui::Checkbox("Generate new chunks", &world->isChunkGenerationEnabled);
             ImGui::Checkbox("Bake new chunks", &world->isChunkBakingEnabled);
+            ImGui::Checkbox("Use single texture", &chunksRenderer.isUseSingleTexture);
 
             if (ImGui::Button("Halt")) {
                 running = false;
