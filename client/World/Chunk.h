@@ -15,6 +15,9 @@
 static int fakeHashIndex = 0;
 
 class Chunk {
+private:
+    BakedChunk *bakedChunk = nullptr;
+    BakedChunk *nextBakedChunk = nullptr;
 public:
     explicit Chunk(Vec3i position): position(position) {
         this->hash = fakeHashIndex++;
@@ -47,12 +50,11 @@ public:
     std::array<std::array<std::array<Block*, CHUNK_SIZE_XZ>, CHUNK_SIZE_Y>, CHUNK_SIZE_XZ> blocks{};
 
     bool isNeedToUnload = false;
+    bool isNeedToRebake = false;
 
     void setBlock(BlockID id, Vec3i pos);
 
     [[nodiscard]] Block *getBlock(Vec3i pos) const;
-
-    BakedChunk *bakedChunk = nullptr;
     //std::pmr::unordered_map<int, BakedChunk *> cachedBakedChunks;
 
     Vec3i neighborOffsets[6] = {
@@ -78,10 +80,20 @@ public:
     void addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices, Vec3i chunkPos, Block *currentBlock, glm::vec3 faceDirection, glm::vec3 offsets[], BlocksSource *blocksSource, Chunk *chunk);
 
     void bakeChunk(BlocksSource *blocksSource);
+    void requestRebake();
 
     [[nodiscard]] bool isBlockInBounds(Vec3i worldPos) const;
 
     Vec3i getBlockWorldPosition(Block *block) const;
+
+    BakedChunk *getBakedChunk() {
+        if (this->nextBakedChunk) {
+            delete this->bakedChunk;
+            this->bakedChunk = this->nextBakedChunk;
+            this->nextBakedChunk = nullptr;
+        }
+        return this->bakedChunk;
+    }
 };
 
 #endif //CHUNK_H

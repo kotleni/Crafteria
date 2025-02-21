@@ -170,7 +170,7 @@ public:
             if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
                 continue;
             }
-            BakedChunk *bakedChunk = chunk->bakedChunk;
+            BakedChunk *bakedChunk = chunk->getBakedChunk();
 
             // Chunk is not baked yet?
             if (bakedChunk == nullptr) continue;
@@ -225,7 +225,7 @@ public:
             if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
                 continue;
             }
-            BakedChunk *bakedChunk = chunk->bakedChunk;
+            BakedChunk *bakedChunk = chunk->getBakedChunk();
 
             // Chunk is not baked yet?
             if (bakedChunk == nullptr) continue;;
@@ -303,6 +303,22 @@ MessageCallback( GLenum source,
         std::cout << "HANG" << std::endl;
         for (;;);
     }
+}
+
+bool raycast(const glm::vec3& origin, const glm::vec3& direction, World* world, glm::ivec3& hitBlock) {
+    glm::vec3 currentPos = origin;
+    glm::vec3 step = glm::normalize(direction) * 0.1f;
+
+    for (int i = 0; i < 100; ++i) {  // Max ray length
+        glm::ivec3 blockPos = glm::ivec3(glm::floor(currentPos.x), glm::floor(currentPos.y), glm::floor(currentPos.z));
+        Block *block = world->getBlock(Vec3i(blockPos));
+        if (block && block->getId() != BLOCK_AIR) {
+            hitBlock = blockPos;
+            return true;
+        }
+        currentPos += step;
+    }
+    return false;
 }
 
 int main() {
@@ -387,6 +403,27 @@ int main() {
             if (event.type == SDL_QUIT) running = false;
             if (isMouseRelative)
             processMouseMotion(event, *world->player);
+
+            if (event.type == SDL_MOUSEBUTTONDOWN)   {
+                switch (event.button.button) {
+                    case SDL_BUTTON_LEFT: // Destroy
+                        glm::ivec3 targetBlock;
+
+                        if (raycast(world->player->getPosition(), world->player->camera_front, world, targetBlock)) {
+                            world->setBlock(BLOCK_AIR, Vec3i(targetBlock));
+                        }
+                    break;
+
+                    case SDL_BUTTON_RIGHT: // Build
+                        glm::ivec3 targetBlock2;
+
+                        if (raycast(world->player->getPosition(), world->player->camera_front, world, targetBlock2)) {
+
+                            world->setBlock(BLOCK_PLANKS, Vec3i(targetBlock2));
+                        }
+                        break;
+                }
+            }
 
             if (event.type == SDL_KEYDOWN) {
                 switch (event.key.keysym.sym) {

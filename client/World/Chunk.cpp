@@ -11,8 +11,11 @@ void Chunk::setBlock(BlockID id, Vec3i pos) {
     assert(pos.x < this->blocks[pos.x].size());
     assert(pos.x < this->blocks[pos.x][pos.y].size());
 
-    if (Block *block = this->blocks[pos.x][pos.y][pos.z]) block->setBlockId(id);
+    if (Block *block = this->blocks[pos.x][pos.y][pos.z])
+            block->setBlockId(id);
     else this->blocks[pos.x][pos.y][pos.z] = new Block(pos, id);
+
+    this->requestRebake();
 }
 
 Block *Chunk::getBlock(Vec3i pos) const {
@@ -110,7 +113,7 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
         for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
             for (int z = 0; z < CHUNK_SIZE_XZ; ++z) {
                 Block *currentBlock = this->getBlock(Vec3i(x, y, z));
-                if (currentBlock == nullptr) continue;
+                if (currentBlock == nullptr || currentBlock->getId() == BLOCK_AIR) continue;
 
                 // Check each block's neighbors to determine which faces should be visible
                 for (int i = 0; i < 6; ++i) {
@@ -215,8 +218,14 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
     long diffMs = endMs - startMs;
     std::cout << "Baked chunk #" << this->hash << " in " << diffMs << " ms" << std::endl;
 
-    this->bakedChunk = bakedChunk;
+    if (!this->bakedChunk) { // If first baking - just save it
+        this->bakedChunk = bakedChunk;
+    } else { // If it's requested update - save as next
+        this->nextBakedChunk = bakedChunk;
+    }
+
     this->hash = fakeHashIndex++;
+    this->isNeedToRebake = false;
 }
 
 bool Chunk::isBlockInBounds(Vec3i worldPos) const {
@@ -229,4 +238,8 @@ Vec3i Chunk::getBlockWorldPosition(Block *block) const {
     chunkWorldPos.x *= CHUNK_SIZE_XZ;
     chunkWorldPos.z *= CHUNK_SIZE_XZ;
     return chunkWorldPos + block->getChunkPosition();
+}
+
+void Chunk::requestRebake() {
+    this->isNeedToRebake = true;
 }

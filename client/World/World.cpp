@@ -86,7 +86,7 @@ void World::updateChunks() {
                 markChunkToUnload(chunk);
             }
 
-            if (!chunk->isBaked() && areNeighborsGenerated(chunkPos) && !chunk->isNeedToUnload && this->isChunkBakingEnabled) {
+            if ((!chunk->isBaked() || chunk->isNeedToRebake) && areNeighborsGenerated(chunkPos) && !chunk->isNeedToUnload && this->isChunkBakingEnabled) {
                 chunk->bakeChunk(this);
             }
         }
