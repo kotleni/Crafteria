@@ -60,8 +60,8 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
 
             chunk->setBlock(surfaceBlock, {xx, y, zz});
 
-            for (int depth = y; depth >= 0; --depth) {
-                chunk->setBlock(depth < 3 ? mediumBlock : BLOCK_STONE, {xx, depth, zz});
+            for (int depth = y - 1; depth >= 0; --depth) {
+                chunk->setBlock(y - (depth - 1) < 3 ? mediumBlock : BLOCK_STONE, {xx, depth, zz});
             }
 
             if (y < realSeaLevel) {
