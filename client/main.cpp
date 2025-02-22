@@ -374,31 +374,54 @@ int main() {
         ImGui::NewFrame();
 
         if (isShowDebugMenu) {
-            ImGui::Begin("Debug");
+            ImGui::Begin("Menu", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 
-            ImGui::Text("Chunks loaded: %d", world->chunks.size());
-            ImGui::Text("Polygons rendered: %dk", (chunksRenderer.lastCountOfTotalVertices / 3) / 1000 /* (vertices / VERTICES_PER_POLYGON) / UNITS_TO_THOUSANDS */);
-            ImGui::Text("FPS: %d", stableFrameCount);
-            ImGui::Text("Seed: %d", world->seedValue);
-            ImGui::Text("Position: %d, %d, %d", playerPos.x, playerPos.y, playerPos.z);
+            ImGui::BeginTabBar("#tabs");
+            if (ImGui::BeginTabItem("Debug")) {
+                ImGui::Text("Chunks loaded: %d", world->chunks.size());
+                ImGui::Text("Polygons rendered: %dk", (chunksRenderer.lastCountOfTotalVertices / 3) / 1000 /* (vertices / VERTICES_PER_POLYGON) / UNITS_TO_THOUSANDS */);
+                ImGui::Text("FPS: %d", stableFrameCount);
+                ImGui::Text("Seed: %d", world->seedValue);
+                ImGui::Text("Position: %d, %d, %d", playerPos.x, playerPos.y, playerPos.z);
 
-            ImGui::PlotLines("FPS", fpsRanges.data(), fpsRanges.size(), 0, 0, 0, std::max(60, peakFps), ImVec2(0, 64));
+                ImGui::PlotLines("FPS", fpsRanges.data(), fpsRanges.size(), 0, 0, 0, std::max(60, peakFps), ImVec2(0, 64));
 
-            ImGui::NewLine();
+                ImGui::Separator();
 
-            ImGui::Checkbox("Generate new chunks", &world->isChunkGenerationEnabled);
-            ImGui::Checkbox("Bake new chunks", &world->isChunkBakingEnabled);
-            ImGui::Checkbox("Use single texture", &chunksRenderer.isUseSingleTexture);
+                ImGui::Checkbox("Generate new chunks", &world->isChunkGenerationEnabled);
+                ImGui::Checkbox("Bake new chunks", &world->isChunkBakingEnabled);
+                ImGui::Checkbox("Use single texture", &chunksRenderer.isUseSingleTexture);
 
-            ImGui::NewLine();
-
-            if (ImGui::Checkbox("VSync", &isEnableVsync)) {
-                SDL_GL_SetSwapInterval(isEnableVsync);
+                ImGui::EndTabItem();
             }
+            if (ImGui::BeginTabItem("Settings")) {
+                if (ImGui::Checkbox("VSync", &isEnableVsync)) {
+                    SDL_GL_SetSwapInterval(isEnableVsync);
+                }
 
-            if (ImGui::Button("Halt")) {
-                running = false;
+                ImGui::EndTabItem();
             }
+            if (ImGui::BeginTabItem("Experiments")) {
+                if (ImGui::Button("Remove all blocks in chunk")) {
+                    Vec3i playerChunkPos = {
+                        static_cast<int>(world->player->getPosition().x / CHUNK_SIZE_XZ), 0,
+                        static_cast<int>(world->player->getPosition().z / CHUNK_SIZE_XZ)
+                    };
+
+                    world->isChunkBakingEnabled = false;
+                    for (int x = 0; x < CHUNK_SIZE_XZ; x++) {
+                        for (int y = 0; y < CHUNK_SIZE_Y; y++) {
+                            for (int z = 0; z < CHUNK_SIZE_XZ; z++) {
+                                    world->setBlock(BLOCK_AIR, Vec3i(playerChunkPos.x + x, playerChunkPos.y + y, playerChunkPos.z + z));
+                            }
+                        }
+                    }
+                    world->isChunkBakingEnabled = true;
+                }
+
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
 
             ImGui::End();
         }
