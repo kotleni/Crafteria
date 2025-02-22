@@ -188,11 +188,6 @@ public:
             }
 
             for (auto &part: bakedChunk->chunkParts) {
-                if (part.indices.size() > 3000 || part.indices.capacity() > 3000) {
-                    std::cout << "Chunk part indices count/capacity limit. Bug?" << std::endl;
-                    return;
-                }
-
                 if (!part.hasBuffered()) {
                     part.bufferMesh();
                 }

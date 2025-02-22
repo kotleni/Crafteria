@@ -1,5 +1,7 @@
 #include "Chunk.h"
 
+#include <unordered_map>
+
 #include "../constants.h"
 
 void Chunk::setBlock(BlockID id, Vec3i pos) {
@@ -109,11 +111,17 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
 
     auto bakedChunk = new BakedChunk();
 
+    std::pmr::unordered_map<BlockID, std::vector<GLfloat>> verticesMap;
+    std::pmr::unordered_map<BlockID, std::vector<GLuint>> indicesMap;
+
     for (int x = 0; x < CHUNK_SIZE_XZ; ++x) {
         for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
             for (int z = 0; z < CHUNK_SIZE_XZ; ++z) {
                 Block *currentBlock = this->getBlock(Vec3i(x, y, z));
                 if (currentBlock == nullptr || currentBlock->getId() == BLOCK_AIR) continue;
+
+                std::vector<GLfloat> vertices = verticesMap[currentBlock->getId()];
+                std::vector<GLuint> indices = indicesMap[currentBlock->getId()];
 
                 // Check each block's neighbors to determine which faces should be visible
                 for (int i = 0; i < 6; ++i) {
@@ -122,9 +130,6 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
 
                     // Skip bottom face for bottom block
                     if (y == 0 && faceDirection.y == -1) continue;
-
-                    std::vector<GLfloat> vertices;
-                    std::vector<GLuint> indices;
 
                     // Check if the neighboring block exists or is air (to render the face)
                     Vec3i neighborWorldPos = this->getBlockWorldPosition(currentBlock) + neighborOffsets[i];
@@ -151,15 +156,15 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
                             };
                             addFace(&vertices, &indices, this->position, currentBlock, faceDirection, offsets, blocksSource, this);
                         } else if (faceDirection == glm::vec3(0, -1, 0)) {
-                           // if (y != 0) { // Do not place bottom face on bottom blocks
-                                glm::vec3 offsets[] = {
-                                    glm::vec3(-1, -1, -1),
-                                    glm::vec3(1, -1, -1),
-                                    glm::vec3(1, -1, 1),
-                                    glm::vec3(-1, -1, 1),
-                                };
-                                addFace(&vertices, &indices, this->position, currentBlock, faceDirection, offsets, blocksSource, this);
-                           // }
+                            // if (y != 0) { // Do not place bottom face on bottom blocks
+                            glm::vec3 offsets[] = {
+                                glm::vec3(-1, -1, -1),
+                                glm::vec3(1, -1, -1),
+                                glm::vec3(1, -1, 1),
+                                glm::vec3(-1, -1, 1),
+                            };
+                            addFace(&vertices, &indices, this->position, currentBlock, faceDirection, offsets, blocksSource, this);
+                            // }
                         } else if (faceDirection == glm::vec3(0, 1, 0)) {
                             glm::vec3 offsets[] = {
                                 glm::vec3(-1, 1, -1),
@@ -192,26 +197,35 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
                         indices.push_back(vertexOffset + 2);
                         indices.push_back(vertexOffset + 3);
                         indices.push_back(vertexOffset + 0);
-
-                    }
-
-                    // If there are vertices and indices for this face, create a part and add it to the baked chunk
-                    if (!vertices.empty() && !indices.empty()) {
-                        BakedChunkPart part;
-                        part.vertices = std::move(vertices);
-                        part.indices = std::move(indices);
-                        part.blockID = currentBlock->getId();
-                        part.isSolid = currentBlock->isSolid();
-                        part.isBuffered = false;
-
-                        if (part.isSolid)
-                            bakedChunk->chunkParts.push_back(part);
-                        else
-                            bakedChunk->liquidChunkParts.push_back(part);
                     }
                 }
+
+                verticesMap[currentBlock->getId()] = vertices;
+                indicesMap[currentBlock->getId()] = indices;
             }
         }
+    }
+
+    // For each block
+    // Create separated chunk part
+    for (const BlockData& blockData: BLOCKS_DATA) {
+        auto vertices = verticesMap[blockData.blockID];
+        auto indices = indicesMap[blockData.blockID];
+
+        // Skip emptys
+        if (vertices.empty() || indices.empty()) continue;
+
+        BakedChunkPart part;
+        part.vertices = std::move(vertices);
+        part.indices = std::move(indices);
+        part.blockID = blockData.blockID;
+        part.isSolid = blockData.isSolid;
+        part.isBuffered = false;
+
+        if (part.isSolid)
+            bakedChunk->chunkParts.push_back(part);
+        else
+            bakedChunk->liquidChunkParts.push_back(part);
     }
 
     long endMs = SDL_GetTicks();

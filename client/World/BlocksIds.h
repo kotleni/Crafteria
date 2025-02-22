@@ -23,19 +23,20 @@ struct BlockData {
     std::string name;
     BlockID blockID;
     float atlasX, atlasY;
+    bool isSolid;
 };
 
 inline const BlockData BLOCKS_DATA[10] = {
-    { "cobblestone", BLOCK_COBBLESTONE, 0, 32 },
-    { "dirt", BLOCK_DIRT, 0, 32 },
-    { "grass", BLOCK_GRASS, 32, 0 },
-    { "lava", BLOCK_LAVA, 0, 64 },
-    { "water", BLOCK_WATER, 64, 64 },
-    { "oak_leaves", BLOCK_LEAVES, 96, 0 },
-    { "oak_log", BLOCK_LOG, 64, 32 },
-    { "oak_planks", BLOCK_PLANKS, 96, 32 },
-    { "stone", BLOCK_STONE, 32, 32 },
-    { "sand", BLOCK_SAND, 32, 64 },
+    { "cobblestone", BLOCK_COBBLESTONE, 0, 32, true },
+    { "dirt", BLOCK_DIRT, 0, 32, true },
+    { "grass", BLOCK_GRASS, 32, 0, true },
+    { "lava", BLOCK_LAVA, 0, 64, false },
+    { "water", BLOCK_WATER, 64, 64, false },
+    { "oak_leaves", BLOCK_LEAVES, 96, 0, true },
+    { "oak_log", BLOCK_LOG, 64, 32, true },
+    { "oak_planks", BLOCK_PLANKS, 96, 32, true },
+    { "stone", BLOCK_STONE, 32, 32, true },
+    { "sand", BLOCK_SAND, 32, 64, true },
 };
 
 #endif
