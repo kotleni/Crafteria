@@ -305,7 +305,7 @@ MessageCallback( GLenum source,
     }
 }
 
-bool raycast(const glm::vec3& origin, const glm::vec3& direction, World* world, glm::ivec3& hitBlock) {
+bool raycast(const glm::vec3& origin, const glm::vec3& direction, World* world, glm::ivec3& hitBlock, glm::ivec3& hitNormal) {
     glm::vec3 rayDir = glm::normalize(direction);
     glm::ivec3 currentBlock = glm::ivec3(glm::floor(origin));
     glm::vec3 deltaDist = glm::vec3(
@@ -333,15 +333,19 @@ bool raycast(const glm::vec3& origin, const glm::vec3& direction, World* world, 
             return true;
         }
 
+        // Determine which axis the step is taken in
         if (sideDist.x < sideDist.y && sideDist.x < sideDist.z) {
             sideDist.x += deltaDist.x;
             currentBlock.x += step.x;
+            hitNormal = glm::ivec3(-step.x, 0, 0);
         } else if (sideDist.y < sideDist.z) {
             sideDist.y += deltaDist.y;
             currentBlock.y += step.y;
+            hitNormal = glm::ivec3(0, -step.y, 0);
         } else {
             sideDist.z += deltaDist.z;
             currentBlock.z += step.z;
+            hitNormal = glm::ivec3(0, 0, -step.z);
         }
     }
 
@@ -435,18 +439,19 @@ int main() {
                 switch (event.button.button) {
                     case SDL_BUTTON_LEFT: // Destroy
                         glm::ivec3 targetBlock;
+                        glm::ivec3 hitNormal;
 
-                        if (raycast(world->player->getPosition(), world->player->camera_front, world, targetBlock)) {
+                        if (raycast(world->player->getPosition(), world->player->camera_front, world, targetBlock, hitNormal)) {
                             world->setBlock(BLOCK_AIR, Vec3i(targetBlock));
                         }
                     break;
 
                     case SDL_BUTTON_RIGHT: // Build
                         glm::ivec3 targetBlock2;
+                        glm::ivec3 hitNormal2;
+                        if (raycast(world->player->getPosition(), world->player->camera_front, world, targetBlock2, hitNormal2)) {
 
-                        if (raycast(world->player->getPosition(), world->player->camera_front, world, targetBlock2)) {
-
-                            world->setBlock(BLOCK_PLANKS, Vec3i(targetBlock2));
+                            world->setBlock(BLOCK_PLANKS, Vec3i(targetBlock2 + hitNormal2));
                         }
                         break;
                 }
