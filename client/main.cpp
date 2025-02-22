@@ -425,13 +425,14 @@ int main() {
     auto world = new World(255);
 
     bool isMouseRelative = false;
+    bool isEnableVsync = true;
 
     bool running = true;
     auto lastTime = SDL_GetTicks();
     int frameCount = 0;
     int stableFrameCount = 0;
 
-    SDL_GL_SetSwapInterval(SDL_FALSE);
+    SDL_GL_SetSwapInterval(isEnableVsync);
 
     int width, height;
     SDL_GetWindowSize(window, &width, &height);
@@ -566,6 +567,12 @@ int main() {
             ImGui::Checkbox("Generate new chunks", &world->isChunkGenerationEnabled);
             ImGui::Checkbox("Bake new chunks", &world->isChunkBakingEnabled);
             ImGui::Checkbox("Use single texture", &chunksRenderer.isUseSingleTexture);
+
+            ImGui::NewLine();
+
+            if (ImGui::Checkbox("VSync", &isEnableVsync)) {
+                SDL_GL_SetSwapInterval(isEnableVsync);
+            }
 
             if (ImGui::Button("Halt")) {
                 running = false;
