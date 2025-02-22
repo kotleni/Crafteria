@@ -561,7 +561,7 @@ int main() {
             ImGui::Begin("Debug");
 
             ImGui::Text("Chunks loaded: %d", world->chunks.size());
-            ImGui::Text("Vertices rendered: %dk", chunksRenderer.lastCountOfTotalVerticles / 1000);
+            ImGui::Text("Polygons rendered: %dk", (chunksRenderer.lastCountOfTotalVerticles / 3) / 1000 /* (vertices / VERTICES_PER_POLYGON) / UNITS_TO_THOUSANDS */);
             ImGui::Text("FPS: %d", stableFrameCount);
             ImGui::Text("Seed: %d", world->seedValue);
             ImGui::Text("Position: %d, %d, %d", playerPos.x, playerPos.y, playerPos.z);
