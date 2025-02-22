@@ -365,7 +365,7 @@ float crosshairVertices[] = {
 
 int main() {
     SDL_Init(SDL_INIT_VIDEO);
-    SDL_Window *window = SDL_CreateWindow("Chunk Rendering", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1400, 900,
+    SDL_Window *window = SDL_CreateWindow("Crafteria", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1400, 900,
                                           SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
