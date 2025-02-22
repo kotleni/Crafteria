@@ -26,6 +26,7 @@ add_executable(crafteria
         client/World/BakedChunkPart.cpp
         client/World/BakedChunk.cpp
         client/World/Generator/DefaultWorldGenerator.cpp
+        client/Render/ChunksRenderer.cpp
 
         # imgui
         client/GUI/imgui.cpp

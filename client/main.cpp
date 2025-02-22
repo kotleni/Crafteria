@@ -14,10 +14,10 @@
 #include "Image.h"
 #include "PerlinNoise.h"
 #include "Math/Vec3i.h"
-#include "constants.h"
 #include "Player.h"
 #include "World/World.h"
 #include "World/BlocksIds.h"
+#include "Render/ChunksRenderer.h"
 
 #include "GUI/imgui.h"
 #include "GUI/imgui_impl_sdl2.h"
@@ -61,192 +61,6 @@ void processMouseMotion(SDL_Event &event, Player &player) {
         player.updateViewMatrix();
     }
 }
-
-struct Plane {
-    glm::vec3 normal;
-    float distance;
-
-    // Returns true if a point is in front of the plane
-    bool isInFront(const glm::vec3 &point) const {
-        return glm::dot(normal, point) + distance >= 0;
-    }
-};
-
-// Extracts the frustum planes from the view-projection matrix
-std::array<Plane, 6> extractFrustumPlanes(const glm::mat4 &matrix) {
-    std::array<Plane, 6> planes;
-
-    for (int i = 0; i < 6; i++) {
-        int sign = (i % 2 == 0) ? 1 : -1;
-        planes[i].normal = glm::vec3(
-            matrix[0][3] + sign * matrix[0][i / 2],
-            matrix[1][3] + sign * matrix[1][i / 2],
-            matrix[2][3] + sign * matrix[2][i / 2]
-        );
-        planes[i].distance = matrix[3][3] + sign * matrix[3][i / 2];
-
-        // Normalize the plane
-        float length = glm::length(planes[i].normal);
-        planes[i].normal /= length;
-        planes[i].distance /= length;
-    }
-
-    return planes;
-}
-
-bool isChunkInFrustum(const std::array<Plane, 6> &frustumPlanes, const glm::vec3 &chunkMin, const glm::vec3 &chunkMax) {
-    for (const auto &plane : frustumPlanes) {
-        // Check if all 8 corners of the chunk are outside the plane
-        int outCount = 0;
-        for (int x = 0; x < 2; x++) {
-            for (int y = 0; y < 2; y++) {
-                for (int z = 0; z < 2; z++) {
-                    glm::vec3 corner = glm::vec3(
-                        x ? chunkMax.x : chunkMin.x,
-                        y ? chunkMax.y : chunkMin.y,
-                        z ? chunkMax.z : chunkMin.z
-                    );
-                    if (!plane.isInFront(corner)) {
-                        outCount++;
-                    }
-                }
-            }
-        }
-        // If all corners are outside one plane, the chunk is fully outside the frustum
-        if (outCount == 8) return false;
-    }
-    return true;
-}
-
-/**
- * Cached chunks renderer
- */
-class ChunksRenderer {
-    glm::mat4 projection = glm::perspective(glm::radians(75.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
-    glm::vec3 lightPos = glm::vec3(10.0f, 10.0f, 10.0f);
-    glm::mat4 mat4One = glm::mat4(1.0f);
-
-    std::unordered_map<BlockID, GLuint> glTextures;
-public:
-    bool isUseSingleTexture = false;
-    int lastCountOfTotalVerticles = 0;
-
-    ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures): glTextures(glTextures) { }
-
-    void renderChunks(World* world, Shader *shader, Shader *waterShader, Vec3i playerPos) {
-        lastCountOfTotalVerticles = 0;
-
-        // Copy chunks array
-        std::vector<Chunk *> chunks = world->chunks;
-
-        glm::mat4 viewProjection = projection * world->player->getViewMatrix();
-        glm::vec3 pos;
-
-        auto frustumPlanes = extractFrustumPlanes(viewProjection);
-
-        shader->use();
-        shader->setMat4("view", world->player->getViewMatrix());
-        shader->setMat4("projection", projection);
-        shader->setVec3("lightPos", this->lightPos);
-        shader->setVec3("viewPos", world->player->getPosition());
-
-        glDisable(GL_BLEND);
-
-        if (isUseSingleTexture)
-            glBindTexture(GL_TEXTURE_2D, 1);
-
-        // Draw all solid & unload if needed
-        for (const auto &chunk: chunks) {
-            if (chunk->isNeedToUnload) {
-                world->unloadChunk(chunk);
-                continue;
-            }
-
-            Vec3i playerChunkPos = {
-                playerPos.x / CHUNK_SIZE_XZ, 0,
-                playerPos.z / CHUNK_SIZE_XZ
-            };
-            double distance = (chunk->position).distanceTo(playerChunkPos);
-            if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
-                continue;
-            }
-            BakedChunk *bakedChunk = chunk->getBakedChunk();
-
-            // Chunk is not baked yet?
-            if (bakedChunk == nullptr) continue;
-
-            pos.x = chunk->position.x * CHUNK_SIZE_XZ;
-            pos.y = chunk->position.y * CHUNK_SIZE_Y;
-            pos.z = chunk->position.z * CHUNK_SIZE_XZ;
-
-            glm::vec3 chunkMin = pos;
-            glm::vec3 chunkMax = pos + glm::vec3(CHUNK_SIZE_XZ, CHUNK_SIZE_Y, CHUNK_SIZE_XZ);
-
-            // Frustum culling check
-            if (!isChunkInFrustum(frustumPlanes, chunkMin, chunkMax)) {
-                continue;
-            }
-
-            for (auto &part: bakedChunk->chunkParts) {
-                if (!part.hasBuffered()) {
-                    part.bufferMesh();
-                }
-                glBindVertexArray(part.vao);
-
-                shader->setVec3("pos", pos);
-
-                if (!isUseSingleTexture)
-                    glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
-                glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
-                lastCountOfTotalVerticles += part.vertices.size() / 9; // Verticles count
-            }
-        }
-
-        // Copy actual chunks array
-        chunks = world->chunks;
-
-        waterShader->use();
-        waterShader->setMat4("view", world->player->getViewMatrix());
-        waterShader->setMat4("projection", projection);
-        waterShader->setVec3("lightPos", this->lightPos);
-        waterShader->setVec3("viewPos", world->player->getPosition());
-        waterShader->setFloat("time", SDL_GetTicks() / 1000.0f);
-
-        glEnable(GL_BLEND);
-
-        // Draw all liquid
-        for (const auto &chunk: chunks) {
-            double distance = (chunk->position * CHUNK_SIZE_XZ).distanceTo({playerPos.x, 0, playerPos.z});
-            if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
-                continue;
-            }
-            BakedChunk *bakedChunk = chunk->getBakedChunk();
-
-            // Chunk is not baked yet?
-            if (bakedChunk == nullptr) continue;;
-
-            pos.x = chunk->position.x * CHUNK_SIZE_XZ;
-            pos.y = chunk->position.y * CHUNK_SIZE_Y;
-            pos.z = chunk->position.z * CHUNK_SIZE_XZ;
-
-            // Draw not-solid
-            for (auto &part: bakedChunk->liquidChunkParts) {
-                if (!part.hasBuffered()) {
-                    part.bufferMesh();
-                }
-                glBindVertexArray(part.vao);
-
-                waterShader->setVec3("pos", pos);
-                waterShader->setVec3("worldPos", pos);
-
-                if (!isUseSingleTexture)
-                    glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
-                glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
-                lastCountOfTotalVerticles += part.vertices.size() / 9; // Verticles count
-            }
-        }
-    }
-};
 
 GLuint loadImageToGPU(std::string fileName) {
     Image *image = Image::load(fileName);
@@ -558,7 +372,7 @@ int main() {
             ImGui::Begin("Debug");
 
             ImGui::Text("Chunks loaded: %d", world->chunks.size());
-            ImGui::Text("Polygons rendered: %dk", (chunksRenderer.lastCountOfTotalVerticles / 3) / 1000 /* (vertices / VERTICES_PER_POLYGON) / UNITS_TO_THOUSANDS */);
+            ImGui::Text("Polygons rendered: %dk", (chunksRenderer.lastCountOfTotalVertices / 3) / 1000 /* (vertices / VERTICES_PER_POLYGON) / UNITS_TO_THOUSANDS */);
             ImGui::Text("FPS: %d", stableFrameCount);
             ImGui::Text("Seed: %d", world->seedValue);
             ImGui::Text("Position: %d, %d, %d", playerPos.x, playerPos.y, playerPos.z);
