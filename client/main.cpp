@@ -305,50 +305,56 @@ MessageCallback( GLenum source,
     }
 }
 
-bool raycast(const glm::vec3& origin, const glm::vec3& direction, World* world, glm::ivec3& hitBlock, glm::ivec3& hitNormal) {
+bool raymarch(const glm::vec3& origin, const glm::vec3& direction, float maxLength,
+              std::function<bool(const glm::ivec3&)> findBlock, glm::ivec3& hitBlock, glm::ivec3& hitNormal) {
     glm::vec3 rayDir = glm::normalize(direction);
-    glm::ivec3 currentBlock = glm::ivec3(glm::floor(origin));
-    glm::vec3 deltaDist = glm::vec3(
-        std::abs(1.0f / rayDir.x),
-        std::abs(1.0f / rayDir.y),
-        std::abs(1.0f / rayDir.z)
-    );
+    glm::vec3 invDir = 1.0f / rayDir;
 
-    glm::ivec3 step = glm::ivec3(
-        (rayDir.x > 0) ? 1 : -1,
-        (rayDir.y > 0) ? 1 : -1,
-        (rayDir.z > 0) ? 1 : -1
-    );
+    auto intbound = [](float s, float ds) -> float {
+        if (ds > 0.0f) return (std::ceil(s) - s) / ds;
+        if (ds < 0.0f) return (s - std::floor(s)) / -ds;
+        return std::numeric_limits<float>::infinity();
+    };
 
-    glm::vec3 sideDist = glm::vec3(
-        (rayDir.x > 0) ? ((currentBlock.x + 1.0f - origin.x) * deltaDist.x) : ((origin.x - currentBlock.x) * deltaDist.x),
-        (rayDir.y > 0) ? ((currentBlock.y + 1.0f - origin.y) * deltaDist.y) : ((origin.y - currentBlock.y) * deltaDist.y),
-        (rayDir.z > 0) ? ((currentBlock.z + 1.0f - origin.z) * deltaDist.z) : ((origin.z - currentBlock.z) * deltaDist.z)
-    );
+    glm::ivec3 pos = glm::floor(origin);
+    glm::ivec3 step = glm::ivec3(glm::sign(rayDir));
+    glm::vec3 tMax = glm::vec3(intbound(origin.x, rayDir.x),
+                                intbound(origin.y, rayDir.y),
+                                intbound(origin.z, rayDir.z));
+    glm::vec3 tDelta = glm::vec3(glm::abs(invDir));
+    float radius = maxLength / glm::length(rayDir);
 
-    for (int i = 0; i < 100; ++i) {  // Max ray length
-        Block* block = world->getBlock(Vec3i(currentBlock));
-        if (block && block->getId() != BLOCK_AIR) {
-            hitBlock = currentBlock;
+    while (true) {
+        if (findBlock(pos)) {
+            hitBlock = pos;
             return true;
         }
-
-        // Determine which axis the step is taken in
-        if (sideDist.x < sideDist.y && sideDist.x < sideDist.z) {
-            sideDist.x += deltaDist.x;
-            currentBlock.x += step.x;
-            hitNormal = glm::ivec3(-step.x, 0, 0);
-        } else if (sideDist.y < sideDist.z) {
-            sideDist.y += deltaDist.y;
-            currentBlock.y += step.y;
-            hitNormal = glm::ivec3(0, -step.y, 0);
+        if (tMax.x < tMax.y) {
+            if (tMax.x < tMax.z) {
+                if (tMax.x > radius) break;
+                pos.x += step.x;
+                tMax.x += tDelta.x;
+                hitNormal = glm::ivec3(-step.x, 0, 0);
+            } else {
+                if (tMax.z > radius) break;
+                pos.z += step.z;
+                tMax.z += tDelta.z;
+                hitNormal = glm::ivec3(0, 0, -step.z);
+            }
         } else {
-            sideDist.z += deltaDist.z;
-            currentBlock.z += step.z;
-            hitNormal = glm::ivec3(0, 0, -step.z);
+            if (tMax.y < tMax.z) {
+                if (tMax.y > radius) break;
+                pos.y += step.y;
+                tMax.y += tDelta.y;
+                hitNormal = glm::ivec3(0, -step.y, 0);
+            } else {
+                if (tMax.z > radius) break;
+                pos.z += step.z;
+                tMax.z += tDelta.z;
+                hitNormal = glm::ivec3(0, 0, -step.z);
+            }
         }
     }
-
     return false;
 }
 
@@ -473,8 +479,17 @@ int main() {
                     case SDL_BUTTON_LEFT: // Destroy
                         glm::ivec3 targetBlock;
                         glm::ivec3 hitNormal;
-
-                        if (raycast(world->player->getPosition(), world->player->camera_front, world, targetBlock, hitNormal)) {
+                        if (raymarch(
+                            world->player->getPosition(),
+                            world->player->camera_front,
+                            1000.0f,
+                            [&](const glm::ivec3 &pos) {
+                                auto block = world->getBlock(Vec3i(pos));
+                                return block && block->getId() != BLOCK_AIR;
+                            },
+                            targetBlock,
+                            hitNormal
+                        )) {
                             world->setBlock(BLOCK_AIR, Vec3i(targetBlock));
                         }
                     break;
@@ -482,8 +497,17 @@ int main() {
                     case SDL_BUTTON_RIGHT: // Build
                         glm::ivec3 targetBlock2;
                         glm::ivec3 hitNormal2;
-                        if (raycast(world->player->getPosition(), world->player->camera_front, world, targetBlock2, hitNormal2)) {
-
+                        if (raymarch(
+                            world->player->getPosition(),
+                            world->player->camera_front,
+                            1000.0f,
+                            [&](const glm::ivec3 &pos) {
+                                auto block = world->getBlock(Vec3i(pos));
+                                return block && block->getId() != BLOCK_AIR;
+                            },
+                            targetBlock2,
+                            hitNormal2
+                        )) {
                             world->setBlock(BLOCK_PLANKS, Vec3i(targetBlock2 + hitNormal2));
                         }
                         break;
