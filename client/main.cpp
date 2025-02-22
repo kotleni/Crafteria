@@ -22,6 +22,7 @@
 #include "GUI/imgui.h"
 #include "GUI/imgui_impl_sdl2.h"
 #include "GUI/imgui_impl_opengl3.h"
+#include "GUI/imgui_internal.h"
 
 struct Clock
 {
@@ -245,6 +246,9 @@ int main() {
     auto lastTime = SDL_GetTicks();
     int frameCount = 0;
     int stableFrameCount = 0;
+    int fpsRangeCount = 16;
+    int peakFps = 0;
+    std::vector<float> fpsRanges = std::vector<float>(fpsRangeCount);
 
     SDL_GL_SetSwapInterval(isEnableVsync);
 
@@ -378,6 +382,8 @@ int main() {
             ImGui::Text("Seed: %d", world->seedValue);
             ImGui::Text("Position: %d, %d, %d", playerPos.x, playerPos.y, playerPos.z);
 
+            ImGui::PlotLines("FPS", fpsRanges.data(), fpsRanges.size(), 0, 0, 0, std::max(60, peakFps), ImVec2(0, 64));
+
             ImGui::NewLine();
 
             ImGui::Checkbox("Generate new chunks", &world->isChunkGenerationEnabled);
@@ -408,6 +414,14 @@ int main() {
 
             stableFrameCount = frameCount;
             frameCount = 0;
+
+            if (peakFps < stableFrameCount)
+                peakFps = stableFrameCount;
+
+            fpsRanges.insert(fpsRanges.end(), stableFrameCount);
+            if (fpsRanges.size() > fpsRangeCount) {
+                fpsRanges.erase(fpsRanges.begin() - 1, fpsRanges.begin() - 1);
+            }
         }
     }
     // Cleanup
