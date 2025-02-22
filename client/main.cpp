@@ -352,6 +352,16 @@ bool raycast(const glm::vec3& origin, const glm::vec3& direction, World* world, 
     return false;
 }
 
+float crosshairVertices[] = {
+    // Horizontal line
+    -0.02f,  0.0f, 0.0f,  // Left point
+     0.02f,  0.0f, 0.0f,  // Right point
+
+    // Vertical line
+     0.0f, -0.02f, 0.0f,  // Bottom point
+     0.0f,  0.02f, 0.0f   // Top point
+};
+
 int main() {
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window *window = SDL_CreateWindow("Chunk Rendering", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1400, 900,
@@ -399,6 +409,7 @@ int main() {
 
     Shader *shader = Shader::load("cube");
     Shader *waterShader = Shader::load("water");
+    Shader *crosshairShader = Shader::load("crosshair");
 
     // TODO
     // glEnable(GL_CULL_FACE);
@@ -420,6 +431,28 @@ int main() {
     int stableFrameCount = 0;
 
     SDL_GL_SetSwapInterval(SDL_FALSE);
+
+    int width, height;
+    SDL_GetWindowSize(window, &width, &height);
+    float aspectRatio = (float)width / (float)height;
+
+    // Load crosshair vertices
+    GLuint crosshairVAO, crosshairVBO;
+    {
+        glGenVertexArrays(1, &crosshairVAO);
+        glGenBuffers(1, &crosshairVBO);
+
+        glBindVertexArray(crosshairVAO);
+
+        glBindBuffer(GL_ARRAY_BUFFER, crosshairVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(crosshairVertices), crosshairVertices, GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *) 0);
+        glEnableVertexAttribArray(0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
 
     while (running) {
         globalClock.tick();
@@ -485,6 +518,15 @@ int main() {
         // glBindVertexArray(vao);
         Vec3i playerPos = {static_cast<int>(world->player->getPosition().x), static_cast<int>(world->player->getPosition().y), static_cast<int>(world->player->getPosition().z)};
         chunksRenderer.renderChunks(world, shader, waterShader, playerPos);
+
+        // Render crosshair
+        {
+            crosshairShader->use();
+            crosshairShader->setFloat("aspectRatio", aspectRatio);
+            glBindVertexArray(crosshairVAO);
+            glDrawArrays(GL_LINES, 0, 4);
+            glBindVertexArray(0);
+        }
 
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
