@@ -359,6 +359,7 @@ int main() {
             crosshairShader->use();
             crosshairShader->setFloat("aspectRatio", aspectRatio);
             glBindVertexArray(crosshairVAO);
+            glLineWidth(2.0f);
             glDrawArrays(GL_LINES, 0, 4);
             glBindVertexArray(0);
         }
