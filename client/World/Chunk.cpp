@@ -29,6 +29,10 @@ Block *Chunk::getBlock(Vec3i pos) const {
     // assert(pos.x < this->blocks[pos.x].size());
     // assert(pos.x < this->blocks[pos.x][pos.y].size());
 
+    if (pos.x < 0 || pos.y < 0 || pos.z < 0 ||
+        pos.x >= CHUNK_SIZE_XZ || pos.y >= CHUNK_SIZE_Y || pos.z >= CHUNK_SIZE_XZ)
+        return nullptr;
+
     return this->blocks[pos.x][pos.y][pos.z];
 }
 
