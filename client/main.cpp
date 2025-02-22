@@ -18,6 +18,7 @@
 #include "World/World.h"
 #include "World/BlocksIds.h"
 #include "Render/ChunksRenderer.h"
+#include "Math/Ray.h"
 
 #include "GUI/imgui.h"
 #include "GUI/imgui_impl_sdl2.h"
@@ -116,54 +117,24 @@ MessageCallback( GLenum source,
 }
 
 bool raymarch(const glm::vec3& origin, const glm::vec3& direction, float maxLength,
-              std::function<bool(const glm::ivec3&)> findBlock, glm::ivec3& hitBlock, glm::ivec3& hitNormal) {
+              std::function<bool(const glm::ivec3&)> findBlock, glm::ivec3& hitBlock, glm::ivec3& prevPos) {
     glm::vec3 rayDir = glm::normalize(direction);
-    glm::vec3 invDir = 1.0f / rayDir;
 
-    auto intbound = [](float s, float ds) -> float {
-        if (ds > 0.0f) return (std::ceil(s) - s) / ds;
-        if (ds < 0.0f) return (s - std::floor(s)) / -ds;
-        return std::numeric_limits<float>::infinity();
-    };
+    for (Ray ray({origin.x, origin.y, origin.z}, rayDir);
+         ray.getLength() < maxLength; ray.step(0.05f)) {
+        glm::vec3 gg = {ray.getEnd().x, ray.getEnd().y, ray.getEnd().z};
 
-    glm::ivec3 pos = glm::floor(origin);
-    glm::ivec3 step = glm::ivec3(glm::sign(rayDir));
-    glm::vec3 tMax = glm::vec3(intbound(origin.x, rayDir.x),
-                                intbound(origin.y, rayDir.y),
-                                intbound(origin.z, rayDir.z));
-    glm::vec3 tDelta = glm::vec3(glm::abs(invDir));
-    float radius = maxLength / glm::length(rayDir);
+        int x = floor(gg.x);
+        int y = floor(gg.y);
+        int z = floor(gg.z);
 
-    while (true) {
-        if (findBlock(pos)) {
-            hitBlock = pos;
+        if (findBlock(glm::ivec3(x, y, z))) {
+            hitBlock = glm::ivec3(x, y, z);
+
             return true;
         }
-        if (tMax.x < tMax.y) {
-            if (tMax.x < tMax.z) {
-                if (tMax.x > radius) break;
-                pos.x += step.x;
-                tMax.x += tDelta.x;
-                hitNormal = glm::ivec3(-step.x, 0, 0);
-            } else {
-                if (tMax.z > radius) break;
-                pos.z += step.z;
-                tMax.z += tDelta.z;
-                hitNormal = glm::ivec3(0, 0, -step.z);
-            }
-        } else {
-            if (tMax.y < tMax.z) {
-                if (tMax.y > radius) break;
-                pos.y += step.y;
-                tMax.y += tDelta.y;
-                hitNormal = glm::ivec3(0, -step.y, 0);
-            } else {
-                if (tMax.z > radius) break;
-                pos.z += step.z;
-                tMax.z += tDelta.z;
-                hitNormal = glm::ivec3(0, 0, -step.z);
-            }
-        }
+
+        prevPos = glm::ivec3(x, y, z);
     }
     return false;
 }
@@ -226,6 +197,7 @@ int main() {
     Shader *shader = Shader::load("cube");
     Shader *waterShader = Shader::load("water");
     Shader *crosshairShader = Shader::load("crosshair");
+    Shader *selectionShader = Shader::load("selection");
 
     // TODO
     // glEnable(GL_CULL_FACE);
@@ -293,17 +265,17 @@ int main() {
                 switch (event.button.button) {
                     case SDL_BUTTON_LEFT: // Destroy
                         glm::ivec3 targetBlock;
-                        glm::ivec3 hitNormal;
+                        glm::ivec3 prevPos;
                         if (raymarch(
                             world->player->getPosition(),
                             world->player->camera_front,
-                            1000.0f,
+                            36.0f,
                             [&](const glm::ivec3 &pos) {
                                 auto block = world->getBlock(Vec3i(pos));
                                 return block && block->getId() != BLOCK_AIR;
                             },
                             targetBlock,
-                            hitNormal
+                            prevPos
                         )) {
                             world->setBlock(BLOCK_AIR, Vec3i(targetBlock));
                         }
@@ -311,19 +283,19 @@ int main() {
 
                     case SDL_BUTTON_RIGHT: // Build
                         glm::ivec3 targetBlock2;
-                        glm::ivec3 hitNormal2;
+                        glm::ivec3 prevPos2;
                         if (raymarch(
                             world->player->getPosition(),
                             world->player->camera_front,
-                            1000.0f,
+                            36.0f,
                             [&](const glm::ivec3 &pos) {
                                 auto block = world->getBlock(Vec3i(pos));
                                 return block && block->getId() != BLOCK_AIR;
                             },
                             targetBlock2,
-                            hitNormal2
+                            prevPos2
                         )) {
-                            world->setBlock(BLOCK_PLANKS, Vec3i(targetBlock2 + hitNormal2));
+                            world->setBlock(BLOCK_PLANKS, Vec3i(prevPos2));
                         }
                         break;
                 }
@@ -347,6 +319,22 @@ int main() {
             }
         }
 
+        glm::ivec3 targetBlock2;
+        glm::ivec3 hitNormal2;
+        if (raymarch(
+            world->player->getPosition(),
+            world->player->camera_front,
+            100.0f,
+            [&](const glm::ivec3 &pos) {
+                auto block = world->getBlock(Vec3i(pos));
+                return block && block->getId() != BLOCK_AIR;
+            },
+            targetBlock2,
+            hitNormal2
+        )) {
+            chunksRenderer.targetBlock = Vec3i(targetBlock2);
+        }
+
         const Uint8 *state = SDL_GetKeyboardState(nullptr);
         float camera_speed = 0.01f * globalClock.delta;
         if (state[SDL_SCANCODE_W]) world->player->moveRelative(camera_speed * world->player->camera_front);
@@ -356,7 +344,7 @@ int main() {
 
         // glBindVertexArray(vao);
         Vec3i playerPos = {static_cast<int>(world->player->getPosition().x), static_cast<int>(world->player->getPosition().y), static_cast<int>(world->player->getPosition().z)};
-        chunksRenderer.renderChunks(world, shader, waterShader, playerPos);
+        chunksRenderer.renderChunks(world, shader, waterShader, selectionShader, playerPos);
 
         // Render crosshair
         {

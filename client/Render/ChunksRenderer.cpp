@@ -45,7 +45,72 @@ bool ChunksRenderer::isChunkInFrustum(const std::array<Plane, 6> &frustumPlanes,
     return true;
 }
 
-void ChunksRenderer::renderChunks(World *world, Shader *shader, Shader *waterShader, Vec3i playerPos) {
+#define CUBE_MINUS_V -0.01f
+#define CUBE_PLUS_V 1.01f
+
+static const GLfloat blockVertices[] = {
+    CUBE_MINUS_V,CUBE_MINUS_V,CUBE_MINUS_V,
+    CUBE_MINUS_V,CUBE_MINUS_V, CUBE_PLUS_V,
+    CUBE_MINUS_V, CUBE_PLUS_V, CUBE_PLUS_V,
+    CUBE_PLUS_V, CUBE_PLUS_V,CUBE_MINUS_V,
+    CUBE_MINUS_V,CUBE_MINUS_V,CUBE_MINUS_V,
+    CUBE_MINUS_V, CUBE_PLUS_V,CUBE_MINUS_V,
+    CUBE_PLUS_V,CUBE_MINUS_V, CUBE_PLUS_V,
+    CUBE_MINUS_V,CUBE_MINUS_V,CUBE_MINUS_V,
+    CUBE_PLUS_V,CUBE_MINUS_V,CUBE_MINUS_V,
+    CUBE_PLUS_V, CUBE_PLUS_V,CUBE_MINUS_V,
+    CUBE_PLUS_V,CUBE_MINUS_V,CUBE_MINUS_V,
+    CUBE_MINUS_V,CUBE_MINUS_V,CUBE_MINUS_V,
+    CUBE_MINUS_V,CUBE_MINUS_V,CUBE_MINUS_V,
+    CUBE_MINUS_V, CUBE_PLUS_V, CUBE_PLUS_V,
+    CUBE_MINUS_V, CUBE_PLUS_V,CUBE_MINUS_V,
+    CUBE_PLUS_V,CUBE_MINUS_V, CUBE_PLUS_V,
+    CUBE_MINUS_V,CUBE_MINUS_V, CUBE_PLUS_V,
+    CUBE_MINUS_V,CUBE_MINUS_V,CUBE_MINUS_V,
+    CUBE_MINUS_V, CUBE_PLUS_V, CUBE_PLUS_V,
+    CUBE_MINUS_V,CUBE_MINUS_V, CUBE_PLUS_V,
+    CUBE_PLUS_V,CUBE_MINUS_V, CUBE_PLUS_V,
+    CUBE_PLUS_V, CUBE_PLUS_V, CUBE_PLUS_V,
+    CUBE_PLUS_V,CUBE_MINUS_V,CUBE_MINUS_V,
+    CUBE_PLUS_V, CUBE_PLUS_V,CUBE_MINUS_V,
+    CUBE_PLUS_V,CUBE_MINUS_V,CUBE_MINUS_V,
+    CUBE_PLUS_V, CUBE_PLUS_V, CUBE_PLUS_V,
+    CUBE_PLUS_V,CUBE_MINUS_V, CUBE_PLUS_V,
+    CUBE_PLUS_V, CUBE_PLUS_V, CUBE_PLUS_V,
+    CUBE_PLUS_V, CUBE_PLUS_V,CUBE_MINUS_V,
+    CUBE_MINUS_V, CUBE_PLUS_V,CUBE_MINUS_V,
+    CUBE_PLUS_V, CUBE_PLUS_V, CUBE_PLUS_V,
+    CUBE_MINUS_V, CUBE_PLUS_V,CUBE_MINUS_V,
+    CUBE_MINUS_V, CUBE_PLUS_V, CUBE_PLUS_V,
+    CUBE_PLUS_V, CUBE_PLUS_V, CUBE_PLUS_V,
+    CUBE_MINUS_V, CUBE_PLUS_V, CUBE_PLUS_V,
+    CUBE_PLUS_V,CUBE_MINUS_V, CUBE_PLUS_V
+};
+
+ChunksRenderer::ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures) {
+    this->glTextures = glTextures;
+
+    glGenVertexArrays(1, &vaoSelection);
+    glGenBuffers(1, &vboSelection);
+    glGenBuffers(1, &eboSelection);
+
+    glBindVertexArray(vaoSelection);
+    glBindBuffer(GL_ARRAY_BUFFER, vboSelection);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(blockVertices), blockVertices,
+                 GL_STATIC_DRAW);
+
+    glVertexAttribPointer(
+        0,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+        3,                                // size
+        GL_FLOAT,                         // type
+        GL_FALSE,                         // normalized?
+        0,                                // stride
+        (void*)0                          // array buffer offset
+    );
+    glEnableVertexAttribArray(0);
+}
+
+void ChunksRenderer::renderChunks(World *world, Shader *shader, Shader *waterShader, Shader *selectionShader, Vec3i playerPos) {
     lastCountOfTotalVertices = 0;
 
     // Copy chunks array
@@ -156,5 +221,18 @@ void ChunksRenderer::renderChunks(World *world, Shader *shader, Shader *waterSha
             glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
             lastCountOfTotalVertices += part.vertices.size() / 9; // Verticles count
         }
+    }
+
+    // Render selected block
+    {
+        glEnable(GL_BLEND);
+
+        selectionShader->use();
+        selectionShader->setMat4("view", world->player->getViewMatrix());
+        selectionShader->setMat4("projection", projection);
+        selectionShader->setVec3("pos", glm::vec3(targetBlock.x, targetBlock.y, targetBlock.z));
+
+        glBindVertexArray(vaoSelection);
+        glDrawArrays(GL_TRIANGLES, 0, sizeof(blockVertices));
     }
 }

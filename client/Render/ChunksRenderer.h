@@ -32,16 +32,25 @@ class ChunksRenderer {
 
     std::unordered_map<BlockID, GLuint> glTextures;
 
+    GLuint vaoSelection;
+    GLuint vboSelection;
+    GLuint eboSelection;
+
     // Extracts the frustum planes from the view-projection matrix
+
     std::array<Plane, 6> extractFrustumPlanes(const glm::mat4 &matrix);
+
     bool isChunkInFrustum(const std::array<Plane, 6> &frustumPlanes, const glm::vec3 &chunkMin, const glm::vec3 &chunkMax);
+
 public:
+    Vec3i targetBlock = Vec3i(0, 0, 0);
+
     bool isUseSingleTexture = false;
     int lastCountOfTotalVertices = 0;
 
-    ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures): glTextures(glTextures) {}
+    ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures);
 
-    void renderChunks(World* world, Shader *shader, Shader *waterShader, Vec3i playerPos);
+    void renderChunks(World* world, Shader *shader, Shader *waterShader, Shader *selectionShader, Vec3i playerPos);
 };
 
 #endif //CHUNKSRENDERER_H
