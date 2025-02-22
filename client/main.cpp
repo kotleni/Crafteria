@@ -306,18 +306,45 @@ MessageCallback( GLenum source,
 }
 
 bool raycast(const glm::vec3& origin, const glm::vec3& direction, World* world, glm::ivec3& hitBlock) {
-    glm::vec3 currentPos = origin;
-    glm::vec3 step = glm::normalize(direction) * 0.1f;
+    glm::vec3 rayDir = glm::normalize(direction);
+    glm::ivec3 currentBlock = glm::ivec3(glm::floor(origin));
+    glm::vec3 deltaDist = glm::vec3(
+        std::abs(1.0f / rayDir.x),
+        std::abs(1.0f / rayDir.y),
+        std::abs(1.0f / rayDir.z)
+    );
+
+    glm::ivec3 step = glm::ivec3(
+        (rayDir.x > 0) ? 1 : -1,
+        (rayDir.y > 0) ? 1 : -1,
+        (rayDir.z > 0) ? 1 : -1
+    );
+
+    glm::vec3 sideDist = glm::vec3(
+        (rayDir.x > 0) ? ((currentBlock.x + 1.0f - origin.x) * deltaDist.x) : ((origin.x - currentBlock.x) * deltaDist.x),
+        (rayDir.y > 0) ? ((currentBlock.y + 1.0f - origin.y) * deltaDist.y) : ((origin.y - currentBlock.y) * deltaDist.y),
+        (rayDir.z > 0) ? ((currentBlock.z + 1.0f - origin.z) * deltaDist.z) : ((origin.z - currentBlock.z) * deltaDist.z)
+    );
 
     for (int i = 0; i < 100; ++i) {  // Max ray length
-        glm::ivec3 blockPos = glm::ivec3(glm::floor(currentPos.x), glm::floor(currentPos.y), glm::floor(currentPos.z));
-        Block *block = world->getBlock(Vec3i(blockPos));
+        Block* block = world->getBlock(Vec3i(currentBlock));
         if (block && block->getId() != BLOCK_AIR) {
-            hitBlock = blockPos;
+            hitBlock = currentBlock;
             return true;
         }
-        currentPos += step;
+
+        if (sideDist.x < sideDist.y && sideDist.x < sideDist.z) {
+            sideDist.x += deltaDist.x;
+            currentBlock.x += step.x;
+        } else if (sideDist.y < sideDist.z) {
+            sideDist.y += deltaDist.y;
+            currentBlock.y += step.y;
+        } else {
+            sideDist.z += deltaDist.z;
+            currentBlock.z += step.z;
+        }
     }
+
     return false;
 }
 
