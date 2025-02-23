@@ -4,8 +4,15 @@ project(crafteria)
 set(CMAKE_CXX_STANDARD 20)
 
 set(USE_EXT_DEPENDENCIES_FROM_PACKAGE_MANAGER false)
+if (UNIX AND NOT APPLE)
+    set(LINUX TRUE)
+endif ()
 
-find_package(OpenGL REQUIRED COMPONENTS OpenGL)
+if (LINUX)
+    find_package(OpenGL REQUIRED COMPONENTS OpenGL)
+else ()
+    message(FATAL_ERROR "Unsupported OS!")
+endif ()
 
 if (USE_EXT_DEPENDENCIES_FROM_PACKAGE_MANAGER)
     find_package(SDL3 REQUIRED)
