@@ -1,10 +1,10 @@
 #ifndef CHUNKSRENDERER_H
 #define CHUNKSRENDERER_H
 
-#include <GL/glew.h>
+#include "../GL/glad.h"
 #include <GL/gl.h>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_opengl.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <unordered_map>

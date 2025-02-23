@@ -3,15 +3,26 @@ cmake_minimum_required(VERSION 3.5)
 project(crafteria)
 set(CMAKE_CXX_STANDARD 20)
 
-find_package(OpenGL REQUIRED COMPONENTS OpenGL)
+set(USE_EXT_DEPENDENCIES_FROM_PACKAGE_MANAGER false)
+if (UNIX AND NOT APPLE)
+    set(LINUX TRUE)
+endif ()
 
-find_package(SDL2 REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS})
+if (LINUX)
+    find_package(OpenGL REQUIRED COMPONENTS OpenGL)
+else ()
+    message(FATAL_ERROR "Unsupported OS!")
+endif ()
 
-find_package(GLEW REQUIRED)
-include_directories(${GLEW_INCLUDE_DIRS})
+if (USE_EXT_DEPENDENCIES_FROM_PACKAGE_MANAGER)
+    find_package(SDL3 REQUIRED)
+    find_package(glm REQUIRED)
+else ()
+    add_subdirectory(ThirdParty/SDL/ EXCLUDE_FROM_ALL)
+    add_subdirectory(ThirdParty/glm/ EXCLUDE_FROM_ALL)
+endif ()
 
-find_package(glm REQUIRED)
+include_directories(${SDL3_INCLUDE_DIRS})
 include_directories(${glm_INCLUDE_DIRS})
 
 add_executable(crafteria
@@ -29,15 +40,14 @@ add_executable(crafteria
         client/World/Generator/DefaultWorldGenerator.cpp
         client/Render/ChunksRenderer.cpp
 
+        client/GL/glad.c
+
         # imgui
         client/GUI/imgui.cpp
-        client/GUI/imgui_impl_sdl2.cpp
+        client/GUI/imgui_impl_sdl3.cpp
         client/GUI/imgui_impl_opengl3.cpp
         client/GUI/imgui_widgets.cpp
         client/GUI/imgui_tables.cpp
         client/GUI/imgui_draw.cpp
 )
-target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} OpenGL::GL)
-
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
-include(CPack)
+target_link_libraries(${PROJECT_NAME} SDL3::SDL3 OpenGL::GL glm::glm)

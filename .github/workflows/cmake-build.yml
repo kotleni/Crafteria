@@ -16,10 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install deps
+      - name: Get dependencies
         run: |
-          sudo apt update
-          sudo apt install libsdl2-dev libglm-dev libglew-dev
+          sudo apt-get install build-essential git make
+          sudo apt-get install pkg-config cmake ninja-build gnome-desktop-testing libasound2-dev libpulse-dev
+          sudo apt-get install libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev
+          sudo apt-get install libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev
+          sudo apt-get install libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev
+          sudo apt-get install libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev
+          git clone --recursive https://github.com/g-truc/glm ./ThirdParty/glm
+          git clone --recursive https://github.com/libsdl-org/SDL ./ThirdParty/SDL
 
       - name: Configure CMake
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
@@ -32,10 +38,10 @@ jobs:
           mkdir -p ${{github.workspace}}/artifact
           cp -r ${{github.workspace}}/Assets ${{github.workspace}}/artifact/
           cp -r ${{github.workspace}}/build/crafteria ${{github.workspace}}/artifact/
-          tar -czvf crafteria-linux-x86_64-${{ github.ref_name }}-${{ github.sha }}.tar.gz -C ${{github.workspace}}/artifact .
+          tar -czvf crafteria-linux-x86_64-${{ github.sha }}.tar.gz -C ${{github.workspace}}/artifact .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: build-artifact
-          path: crafteria-linux-x86_64-${{ github.ref_name }}-${{ github.sha }}.tar.gz
+          path: crafteria-linux-x86_64-${{ github.sha }}.tar.gz

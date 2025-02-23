@@ -2,7 +2,7 @@
 #define BAKEDCHUNKPART_H
 
 #include <vector>
-#include <GL/glew.h>
+#include "../GL/glad.h"
 
 #include "BlocksIds.h"
 
