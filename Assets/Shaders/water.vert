@@ -28,7 +28,7 @@ void main() {
 
     vLight = aLight;
 
-    vec4 absolutePos = vec4(pos + aPos, 1.0);
+    vec4 absolutePos = vec4(pos + modifiedPos, 1.0);
     gl_Position = projection * view * absolutePos;
 
     vec4 viewPos = view * absolutePos;
