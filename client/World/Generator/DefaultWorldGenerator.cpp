@@ -60,6 +60,13 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
 
             chunk->setBlock(surfaceBlock, {xx, y, zz});
 
+            if (surfaceBlock == BLOCK_GRASS) {
+                float floraNoise = this->perlin.octave3D_01(worldX * 0.1, y * 0.1, worldZ * 0.1, 2);
+                if (floraNoise > 0.77) {
+                    chunk->setBlock(BLOCK_GRASS_BUSH, {xx, y + 1, zz});
+                }
+            }
+
             for (int depth = y - 1; depth >= 0; --depth) {
                 BlockID activeBlock = y - (depth - 1) < 3 ? mediumBlock : BLOCK_STONE;
                 if (activeBlock == BLOCK_STONE) {

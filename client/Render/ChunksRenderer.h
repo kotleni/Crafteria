@@ -52,7 +52,7 @@ public:
 
     ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures, RuntimeConfig *runtimeConfig);
 
-    void renderChunks(World* world, Shader *shader, Shader *waterShader, Shader *selectionShader, Vec3i playerPos);
+    void renderChunks(World* world, Shader *shader, Shader *waterShader, Shader *selectionShader, Shader *floraShader, Vec3i playerPos);
 };
 
 #endif //CHUNKSRENDERER_H

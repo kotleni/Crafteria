@@ -81,7 +81,7 @@ void Chunk::addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices
     // Check if any blocks on top cover this block
     for (int y = CHUNK_SIZE_Y - 1; y > blockPos.y; y--) {
         auto anotherBlock = blocksSource->getBlock(Vec3i(blockPos.x, y, blockPos.z));
-        if (anotherBlock && anotherBlock->getId() != 0 && anotherBlock->isSolid()) { // Find cover
+        if (anotherBlock && anotherBlock->getId() != 0 && anotherBlock->isSolid() && !anotherBlock->isFlora()) { // Find cover
             normalizedLight /= 1.2f; // Reduce light
         }
     }
@@ -137,28 +137,80 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
                     Vec3i neighborWorldPos = this->getBlockWorldPosition(currentBlock) + neighborOffsets[i];
                     Block *neighborBlock = blocksSource->getBlock(neighborWorldPos);
 
-                    if (neighborBlock == nullptr || (!neighborBlock->isSolid() && currentBlock->isSolid())) {
-                        // Generate vertices and indices for the visible face
-                        size_t vertexOffset = vertices.size() / 9;
+                    size_t vertexOffset = vertices.size() / 9;
+                    GLuint indicesFront[] = {
+                        static_cast<GLuint>(vertexOffset + 0),
+                        static_cast<GLuint>(vertexOffset + 1),
+                        static_cast<GLuint>(vertexOffset + 2),
+                        static_cast<GLuint>(vertexOffset + 2),
+                        static_cast<GLuint>(vertexOffset + 3),
+                        static_cast<GLuint>(vertexOffset + 0),
+                     };
 
-                        GLuint indicesFront[] = {
-                           static_cast<GLuint>(vertexOffset + 0),
-                           static_cast<GLuint>(vertexOffset + 1),
-                           static_cast<GLuint>(vertexOffset + 2),
-                           static_cast<GLuint>(vertexOffset + 2),
-                           static_cast<GLuint>(vertexOffset + 3),
-                           static_cast<GLuint>(vertexOffset + 0),
+                    GLuint indicesBack[] = {
+                        static_cast<GLuint>(vertexOffset + 2),
+                        static_cast<GLuint>(vertexOffset + 1),
+                        static_cast<GLuint>(vertexOffset + 0),
+                        static_cast<GLuint>(vertexOffset + 0),
+                        static_cast<GLuint>(vertexOffset + 3),
+                        static_cast<GLuint>(vertexOffset + 2),
+                     };
+
+                    if (currentBlock->isFlora()) { // Flora has different geometry
+                        GLuint vertexOffset = vertices.size() / 9;
+
+                        // First quad (diagonal in XZ plane, centered inside the block)
+                        glm::vec3 offsets1[] = {
+                            glm::vec3(0.0f, 0.0f, 0.0f),
+                            glm::vec3(1.0f, 0.0f, 1.0f),
+                            glm::vec3(1.0f, 1.0f, 1.0f),
+                            glm::vec3(0.0f, 1.0f, 0.0f)
                         };
 
-                        GLuint indicesBack[] = {
-                            static_cast<GLuint>(vertexOffset + 2),
-                            static_cast<GLuint>(vertexOffset + 1),
-                            static_cast<GLuint>(vertexOffset + 0),
-                            static_cast<GLuint>(vertexOffset + 0),
-                            static_cast<GLuint>(vertexOffset + 3),
-                            static_cast<GLuint>(vertexOffset + 2),
-                         };
+                        addFace(&vertices, &indices, this->position, currentBlock, faceDirection, offsets1, blocksSource, this);
 
+                        // Front face
+                        GLuint indices1Front[] = {
+                            vertexOffset + 0, vertexOffset + 1, vertexOffset + 2,
+                            vertexOffset + 2, vertexOffset + 3, vertexOffset + 0
+                        };
+                        indices.insert(indices.end(), std::begin(indices1Front), std::end(indices1Front));
+                        vertexOffset = vertices.size() / 9;
+
+                        // Back face (reversed order)
+                        GLuint indices1Back[] = {
+                            vertexOffset + 2, vertexOffset + 1, vertexOffset + 0,
+                            vertexOffset + 0, vertexOffset + 3, vertexOffset + 2
+                        };
+                        indices.insert(indices.end(), std::begin(indices1Back), std::end(indices1Back));
+                        vertexOffset = vertices.size() / 9;
+
+                        // Second quad (rotated 90°, also centered in the block)
+                        glm::vec3 offsets2[] = {
+                            glm::vec3(1.0f, 0.0f, 0.0f),
+                            glm::vec3(0.0f, 0.0f, 1.0f),
+                            glm::vec3(0.0f, 1.0f, 1.0f),
+                            glm::vec3(1.0f, 1.0f, 0.0f)
+                        };
+
+                        addFace(&vertices, &indices, this->position, currentBlock, faceDirection, offsets2, blocksSource, this);
+
+                        // Front face
+                        GLuint indices2Front[] = {
+                            vertexOffset + 0, vertexOffset + 1, vertexOffset + 2,
+                            vertexOffset + 2, vertexOffset + 3, vertexOffset + 0
+                        };
+                        indices.insert(indices.end(), std::begin(indices2Front), std::end(indices2Front));
+                        vertexOffset = vertices.size() / 9;
+
+                        // Back face (reversed order)
+                        GLuint indices2Back[] = {
+                            vertexOffset + 2, vertexOffset + 1, vertexOffset + 0,
+                            vertexOffset + 0, vertexOffset + 3, vertexOffset + 2
+                        };
+                        indices.insert(indices.end(), std::begin(indices2Back), std::end(indices2Back));
+                    }
+                    else if (neighborBlock == nullptr || ((!neighborBlock->isSolid() || neighborBlock->isFlora()) && currentBlock->isSolid())) {
                         if (faceDirection == glm::vec3(0, 0, -1)) {
                             glm::vec3 offsets[] = {
                                 glm::vec3(0, 0, 0),
@@ -237,10 +289,13 @@ void Chunk::bakeChunk(BlocksSource *blocksSource) {
         part.indices = std::move(indices);
         part.blockID = blockData.blockID;
         part.isSolid = blockData.isSolid;
+        part.isFlora = blockData.isFlora;
         part.isBuffered = false;
 
         if (part.isSolid)
             bakedChunk->chunkParts.push_back(part);
+        else if (part.isFlora)
+            bakedChunk->floraChunkParts.push_back(part);
         else
             bakedChunk->liquidChunkParts.push_back(part);
     }

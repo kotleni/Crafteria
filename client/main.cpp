@@ -208,6 +208,7 @@ int main() {
     Shader *waterShader = Shader::load("water");
     Shader *crosshairShader = Shader::load("crosshair");
     Shader *selectionShader = Shader::load("selection");
+    Shader *floraShader = Shader::load("flora");
 
     // TODO
     glEnable(GL_CULL_FACE);
@@ -354,7 +355,7 @@ int main() {
 
         // glBindVertexArray(vao);
         Vec3i playerPos = {static_cast<int>(world->player->getPosition().x), static_cast<int>(world->player->getPosition().y), static_cast<int>(world->player->getPosition().z)};
-        chunksRenderer.renderChunks(world, shader, waterShader, selectionShader, playerPos);
+        chunksRenderer.renderChunks(world, shader, waterShader, selectionShader, floraShader, playerPos);
 
         // Render crosshair
         {

@@ -111,8 +111,12 @@ ChunksRenderer::ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures, R
     glEnableVertexAttribArray(0);
 }
 
-void ChunksRenderer::renderChunks(World *world, Shader *shader, Shader *waterShader, Shader *selectionShader, Vec3i playerPos) {
+void ChunksRenderer::renderChunks(World *world, Shader *shader, Shader *waterShader, Shader *selectionShader, Shader *floraShader, Vec3i playerPos) {
     lastCountOfTotalVertices = 0;
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);  // Enable depth writing
+    glDisable(GL_BLEND);    // No blending for solid objects
 
     // Copy chunks array
     std::vector<Chunk *> chunks = world->chunks;
@@ -188,6 +192,8 @@ void ChunksRenderer::renderChunks(World *world, Shader *shader, Shader *waterSha
     waterShader->setVec3("viewPos", world->player->getPosition());
     waterShader->setFloat("time", SDL_GetTicks() / 1000.0f);
 
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
     glEnable(GL_BLEND);
 
     // Draw all liquid
@@ -220,6 +226,49 @@ void ChunksRenderer::renderChunks(World *world, Shader *shader, Shader *waterSha
             lastCountOfTotalVertices += part.vertices.size() / 9; // Verticles count
         }
     }
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE);
+
+    floraShader->use();
+    floraShader->setMat4("view", world->player->getViewMatrix());
+    floraShader->setMat4("projection", projection);
+    floraShader->setVec3("lightPos", this->lightPos);
+    floraShader->setVec3("viewPos", world->player->getPosition());
+
+    // Draw all flora
+    for (const auto &chunk: chunks) {
+        double distance = (chunk->position * CHUNK_SIZE_XZ).distanceTo({playerPos.x, 0, playerPos.z});
+        if (distance > (runtimeConfig->maxRenderingDistance * CHUNK_SIZE_XZ)) {
+            continue;
+        }
+        BakedChunk *bakedChunk = chunk->getBakedChunk();
+
+        // Chunk is not baked yet?
+        if (bakedChunk == nullptr) continue;;
+
+        pos.x = chunk->position.x * CHUNK_SIZE_XZ;
+        pos.y = chunk->position.y * CHUNK_SIZE_Y;
+        pos.z = chunk->position.z * CHUNK_SIZE_XZ;
+
+        // Draw not-solid
+        for (auto &part: bakedChunk->floraChunkParts) {
+            if (!part.hasBuffered()) {
+                part.bufferMesh();
+            }
+            glBindVertexArray(part.vao);
+
+            waterShader->setVec3("pos", pos);
+            waterShader->setVec3("worldPos", pos);
+
+            glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
+            glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
+            lastCountOfTotalVertices += part.vertices.size() / 9; // Verticles count
+        }
+    }
+
+    glDepthMask(GL_TRUE);
 
     // Render selected block
     {

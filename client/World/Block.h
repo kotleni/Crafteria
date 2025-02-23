@@ -15,6 +15,7 @@ public:
     Vec3i getChunkPosition() const;
     void setBlockId(BlockID id);
     bool isSolid() const;
+    bool isFlora() const;
 };
 
 #endif //BLOCK_H

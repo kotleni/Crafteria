@@ -4,6 +4,11 @@ bool Block::isSolid() const {
     return id != BLOCK_AIR && id != BLOCK_WATER && id != BLOCK_LAVA;
 }
 
+bool Block::isFlora() const {
+    return id == BLOCK_GRASS_BUSH;
+}
+
+
 BlockID Block::getId() const {
     return id;
 }

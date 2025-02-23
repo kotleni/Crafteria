@@ -15,6 +15,7 @@ public:
     GLuint vao, vbo, ebo;
     bool isBuffered; // TODO: Replace by checking VAO...
     bool isSolid;
+    bool isFlora;
 
     [[nodiscard]] bool hasBuffered() const;
 

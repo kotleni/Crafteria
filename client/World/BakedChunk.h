@@ -11,6 +11,7 @@ class BakedChunk {
 public:
     std::vector<BakedChunkPart> chunkParts;
     std::vector<BakedChunkPart> liquidChunkParts;
+    std::vector<BakedChunkPart> floraChunkParts;
     long bakeTime = 0L;
 
     BakedChunk() {
