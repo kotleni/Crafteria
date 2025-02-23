@@ -200,8 +200,8 @@ int main() {
     Shader *selectionShader = Shader::load("selection");
 
     // TODO
-    // glEnable(GL_CULL_FACE);
-    // glCullFace(GL_BACK);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable( GL_BLEND);
@@ -371,6 +371,7 @@ int main() {
                 ImGui::Text("FPS: %d", stableFrameCount);
                 ImGui::Text("Seed: %d", world->seedValue);
                 ImGui::Text("Position: %d, %d, %d", playerPos.x, playerPos.y, playerPos.z);
+                ImGui::Text("Look at: %.2f, %.2f, %.2f", world->player->camera_front.x, world->player->camera_front.y, world->player->camera_front.z);
 
                 ImGui::PlotLines("FPS", fpsRanges.data(), fpsRanges.size(), 0, 0, 0, std::max(60, peakFps), ImVec2(0, 64));
 
