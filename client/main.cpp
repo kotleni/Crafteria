@@ -319,7 +319,10 @@ int main() {
             if (runtimeConfig.isMouseRelative)
             processMouseMotion(event, *world->player);
 
-            if (event.type == SDL_MOUSEWHEEL) {
+            if (event.type == SDL_MOUSEMOTION) {
+                if (runtimeConfig.isMouseRelative)
+                    SDL_WarpMouseInWindow(window, width / 2, height / 2);
+            } else if (event.type == SDL_MOUSEWHEEL) {
                 if (event.wheel.y > 0) {
                     selectedSlot = (selectedSlot - 1 + SLOT_COUNT) % SLOT_COUNT; // Scroll up
                 } else if (event.wheel.y < 0) {
