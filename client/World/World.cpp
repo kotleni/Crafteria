@@ -1,12 +1,13 @@
 #include "World.h"
 
-World::World(int seedValue) {
+World::World(int seedValue, RuntimeConfig *runtimeConfig) {
     this->player = new Player();
     this->seedValue = seedValue;
+    this->runtimeConfig = runtimeConfig;
     this->generator = new DefaultWorldGenerator(seedValue);
 
     for (int i = 0; i < BAKING_CHUNK_THREADS_LIMIT; ++i) {
-        threads.emplace_back(&World:: updateChunks, this);
+        threads.emplace_back(&World::updateChunks, this);
     }
 }
 
@@ -55,7 +56,7 @@ void World::updateChunks() {
         };
 
         // Find not generated chunks around player
-        auto maxDistance = CHUNK_RENDERING_DISTANCE;
+        auto maxDistance = runtimeConfig->maxRenderingDistance;
         bool isFound = false;
         Vec3i targetChunkPos = {0, 0, 0};
         double targetChunkDistance = 99999;
@@ -82,7 +83,7 @@ void World::updateChunks() {
         for (Chunk *chunk: chunks) {
             auto chunkPos = chunk->position;
             auto distance = round(playerChunkPos.distanceTo(chunkPos));
-            if (distance > CHUNK_RENDERING_DISTANCE) {
+            if (distance > runtimeConfig->maxRenderingDistance) {
                 markChunkToUnload(chunk);
             }
 

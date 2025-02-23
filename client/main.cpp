@@ -19,6 +19,7 @@
 #include "World/BlocksIds.h"
 #include "Render/ChunksRenderer.h"
 #include "Math/Ray.h"
+#include "utils/RuntimeConfig.h"
 
 #include "GUI/imgui.h"
 #include "GUI/imgui_impl_sdl2.h"
@@ -150,6 +151,13 @@ float crosshairVertices[] = {
 };
 
 int main() {
+    RuntimeConfig runtimeConfig = RuntimeConfig();
+
+    // Setup default runtime config values
+    runtimeConfig.isEnableVsync = true;
+    runtimeConfig.isMouseRelative = false;
+    runtimeConfig.maxRenderingDistance = 6;
+
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window *window = SDL_CreateWindow("Crafteria", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1400, 900,
                                           SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
@@ -208,11 +216,8 @@ int main() {
 
     glEnable(GL_DEPTH_TEST);
 
-    ChunksRenderer chunksRenderer = ChunksRenderer(glTextures);
-    auto world = new World(255);
-
-    bool isMouseRelative = false;
-    bool isEnableVsync = true;
+    ChunksRenderer chunksRenderer = ChunksRenderer(glTextures, &runtimeConfig);
+    auto world = new World(255, &runtimeConfig);
 
     bool running = true;
     auto lastTime = SDL_GetTicks();
@@ -222,7 +227,7 @@ int main() {
     int peakFps = 0;
     std::vector<float> fpsRanges = std::vector<float>(fpsRangeCount);
 
-    SDL_GL_SetSwapInterval(isEnableVsync);
+    SDL_GL_SetSwapInterval(runtimeConfig.isEnableVsync);
 
     int width, height;
     SDL_GetWindowSize(window, &width, &height);
@@ -254,11 +259,11 @@ int main() {
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            if (!isMouseRelative)
+            if (!runtimeConfig.isMouseRelative)
                 ImGui_ImplSDL2_ProcessEvent(&event);
 
             if (event.type == SDL_QUIT) running = false;
-            if (isMouseRelative)
+            if (runtimeConfig.isMouseRelative)
             processMouseMotion(event, *world->player);
 
             if (event.type == SDL_MOUSEBUTTONDOWN)   {
@@ -306,8 +311,8 @@ int main() {
             if (event.type == SDL_KEYDOWN) {
                 switch (event.key.keysym.sym) {
                     case SDLK_F3:
-                        isMouseRelative = !isMouseRelative;
-                        SDL_SetRelativeMouseMode(static_cast<SDL_bool>(isMouseRelative));
+                        runtimeConfig.isMouseRelative = !runtimeConfig.isMouseRelative;
+                        SDL_SetRelativeMouseMode(static_cast<SDL_bool>(runtimeConfig.isMouseRelative));
                         break;
                     // case SDLK_r:
                     //     x+=1;
@@ -387,8 +392,12 @@ int main() {
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Settings")) {
-                if (ImGui::Checkbox("VSync", &isEnableVsync)) {
-                    SDL_GL_SetSwapInterval(isEnableVsync);
+                if (ImGui::Checkbox("VSync", &runtimeConfig.isEnableVsync)) {
+                    SDL_GL_SetSwapInterval(runtimeConfig.isEnableVsync);
+                }
+
+                if (ImGui::SliderInt("Render distance", &runtimeConfig.maxRenderingDistance, 2, 32)) {
+
                 }
 
                 ImGui::EndTabItem();

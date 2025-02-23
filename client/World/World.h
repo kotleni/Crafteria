@@ -10,6 +10,7 @@
 #include "Chunk.h"
 #include "../Math/Vec3i.h"
 #include "BlocksSource.h"
+#include "../utils/RuntimeConfig.h"
 #include "Generator/AbstractWorldGenerator.h"
 #include "Generator/DefaultWorldGenerator.h"
 
@@ -27,7 +28,9 @@ public:
     bool isChunkGenerationEnabled = true;
     bool isChunkBakingEnabled = true;
 
-    World(int seedValue);
+    RuntimeConfig *runtimeConfig;
+
+    World(int seedValue, RuntimeConfig *runtimeConfig);
 
     int xx = 0;
     int zz = 0;

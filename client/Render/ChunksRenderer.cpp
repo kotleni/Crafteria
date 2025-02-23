@@ -87,8 +87,9 @@ static const GLfloat blockVertices[] = {
     CUBE_PLUS_V,CUBE_MINUS_V, CUBE_PLUS_V
 };
 
-ChunksRenderer::ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures) {
+ChunksRenderer::ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures, RuntimeConfig *runtimeConfig) {
     this->glTextures = glTextures;
+    this->runtimeConfig = runtimeConfig;
 
     glGenVertexArrays(1, &vaoSelection);
     glGenBuffers(1, &vboSelection);
@@ -144,7 +145,7 @@ void ChunksRenderer::renderChunks(World *world, Shader *shader, Shader *waterSha
             playerPos.z / CHUNK_SIZE_XZ
         };
         double distance = (chunk->position).distanceTo(playerChunkPos);
-        if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
+        if (distance > (runtimeConfig->maxRenderingDistance * CHUNK_SIZE_XZ)) {
             continue;
         }
         BakedChunk *bakedChunk = chunk->getBakedChunk();
@@ -194,7 +195,7 @@ void ChunksRenderer::renderChunks(World *world, Shader *shader, Shader *waterSha
     // Draw all liquid
     for (const auto &chunk: chunks) {
         double distance = (chunk->position * CHUNK_SIZE_XZ).distanceTo({playerPos.x, 0, playerPos.z});
-        if (distance > CHUNK_RENDERING_DISTANCE_IN_BLOCKS) {
+        if (distance > (runtimeConfig->maxRenderingDistance * CHUNK_SIZE_XZ)) {
             continue;
         }
         BakedChunk *bakedChunk = chunk->getBakedChunk();

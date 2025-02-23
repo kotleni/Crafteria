@@ -11,6 +11,7 @@
 
 #include "../World/World.h"
 #include "../Shader.h"
+#include "../utils/RuntimeConfig.h"
 
 struct Plane {
     glm::vec3 normal;
@@ -30,6 +31,8 @@ class ChunksRenderer {
     glm::vec3 lightPos = glm::vec3(10.0f, 10.0f, 10.0f);
     glm::mat4 mat4One = glm::mat4(1.0f);
 
+    RuntimeConfig *runtimeConfig;
+
     std::unordered_map<BlockID, GLuint> glTextures;
 
     GLuint vaoSelection;
@@ -48,7 +51,7 @@ public:
     bool isUseSingleTexture = false;
     int lastCountOfTotalVertices = 0;
 
-    ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures);
+    ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures, RuntimeConfig *runtimeConfig);
 
     void renderChunks(World* world, Shader *shader, Shader *waterShader, Shader *selectionShader, Vec3i playerPos);
 };
