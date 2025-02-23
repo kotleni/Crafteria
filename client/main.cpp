@@ -116,12 +116,12 @@ MessageCallback( GLenum source,
     }
 }
 
-bool raymarch(const glm::vec3& origin, const glm::vec3& direction, float maxLength,
+bool raymarch(const glm::vec3& origin, const glm::vec3& direction, float maxLength, float stepScale,
               std::function<bool(const glm::ivec3&)> findBlock, glm::ivec3& hitBlock, glm::ivec3& prevPos) {
     glm::vec3 rayDir = glm::normalize(direction);
 
     for (Ray ray({origin.x, origin.y, origin.z}, rayDir);
-         ray.getLength() < maxLength; ray.step(0.05f)) {
+         ray.getLength() < maxLength; ray.step(stepScale)) {
         glm::vec3 gg = {ray.getEnd().x, ray.getEnd().y, ray.getEnd().z};
 
         int x = floor(gg.x);
@@ -270,6 +270,7 @@ int main() {
                             world->player->getPosition(),
                             world->player->camera_front,
                             36.0f,
+                            0.05f,
                             [&](const glm::ivec3 &pos) {
                                 auto block = world->getBlock(Vec3i(pos));
                                 return block && block->getId() != BLOCK_AIR;
@@ -288,6 +289,7 @@ int main() {
                             world->player->getPosition(),
                             world->player->camera_front,
                             36.0f,
+                            0.05f,
                             [&](const glm::ivec3 &pos) {
                                 auto block = world->getBlock(Vec3i(pos));
                                 return block && block->getId() != BLOCK_AIR;
@@ -324,7 +326,8 @@ int main() {
         if (raymarch(
             world->player->getPosition(),
             world->player->camera_front,
-            100.0f,
+            36.0f,
+            0.5f,
             [&](const glm::ivec3 &pos) {
                 auto block = world->getBlock(Vec3i(pos));
                 return block && block->getId() != BLOCK_AIR;
