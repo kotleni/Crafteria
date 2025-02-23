@@ -16,8 +16,6 @@ void Chunk::setBlock(BlockID id, Vec3i pos) {
     if (Block *block = this->blocks[pos.x][pos.y][pos.z])
             block->setBlockId(id);
     else this->blocks[pos.x][pos.y][pos.z] = new Block(pos, id);
-
-    this->requestRebake();
 }
 
 Block *Chunk::getBlock(Vec3i pos) const {

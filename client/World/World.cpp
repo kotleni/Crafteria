@@ -117,6 +117,7 @@ void World::setBlock(BlockID id, Vec3i worldPos) {
     for (Chunk *chunk : this->chunks) {
         if (chunk->isBlockInBounds(worldPos)) {
             chunk->setBlock(id, worldPos - (chunk->position * CHUNK_SIZE_XZ));
+            chunk->requestRebake();
             return;
         }
     }
