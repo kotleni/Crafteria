@@ -14,15 +14,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Install deps
-      run: |
-        sudo apt update
-        sudo apt install libsdl2-dev libglm-dev libglew-dev
+      - name: Install deps
+        run: |
+          sudo apt update
+          sudo apt install libsdl2-dev libglm-dev libglew-dev
 
-    - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      - name: Configure CMake
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      - name: Build
+        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+      - name: Package Artifacts
+        run: |
+          mkdir -p ${{github.workspace}}/artifact
+          cp -r ${{github.workspace}}/Assets ${{github.workspace}}/artifact/
+          cp -r ${{github.workspace}}/build/crafteria ${{github.workspace}}/artifact/
+          tar -czvf crafteria-linux-x86_64-${{ github.ref_name }}-${{ github.sha }}.tar.gz -C ${{github.workspace}}/artifact .
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifact
+          path: crafteria-linux-x86_64-${{ github.ref_name }}-${{ github.sha }}.tar.gz
