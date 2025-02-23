@@ -9,13 +9,13 @@ find_package(OpenGL REQUIRED COMPONENTS OpenGL)
 
 if (USE_EXT_DEPENDENCIES_FROM_PACKAGE_MANAGER)
     find_package(SDL3 REQUIRED)
+    find_package(glm REQUIRED)
 else ()
     add_subdirectory(ThirdParty/SDL/ EXCLUDE_FROM_ALL)
+    add_subdirectory(ThirdParty/glm/ EXCLUDE_FROM_ALL)
 endif ()
 
 include_directories(${SDL3_INCLUDE_DIRS})
-
-find_package(glm REQUIRED)
 include_directories(${glm_INCLUDE_DIRS})
 
 add_executable(crafteria
@@ -43,7 +43,7 @@ add_executable(crafteria
         client/GUI/imgui_tables.cpp
         client/GUI/imgui_draw.cpp
 )
-target_link_libraries(${PROJECT_NAME} SDL3::SDL3 OpenGL::GL)
+target_link_libraries(${PROJECT_NAME} SDL3::SDL3 OpenGL::GL glm::glm)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
 include(CPack)
