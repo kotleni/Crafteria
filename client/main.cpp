@@ -14,9 +14,6 @@
 #include <thread>
 #include <unordered_map>
 #include <execution>
-#include <SDL2/SDL_keycode.h>
-#include <SDL2/SDL_keycode.h>
-#include <SDL2/SDL_keycode.h>
 
 #include "Shader.h"
 #include "Image.h"
