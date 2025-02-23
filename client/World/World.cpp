@@ -112,12 +112,40 @@ Block *World::getBlock(Vec3i worldPos) {
     return nullptr;
 }
 
+Chunk* World::findChunkByChunkPos(Vec3i pos) {
+    for (Chunk *chunk: this->chunks) {
+        if (chunk->position == pos)
+            return chunk;
+    }
+
+    return nullptr;
+}
+
 void World::setBlock(BlockID id, Vec3i worldPos) {
     // TODO: Calculate chunk pos instead of searching
     for (Chunk *chunk : this->chunks) {
         if (chunk->isBlockInBounds(worldPos)) {
-            chunk->setBlock(id, worldPos - (chunk->position * CHUNK_SIZE_XZ));
+            Vec3i blockInChunkPos = worldPos - (chunk->position * CHUNK_SIZE_XZ);
+            chunk->setBlock(id, blockInChunkPos);
             chunk->requestRebake();
+
+            // Update neighbors chunk
+            Vec3i chunkPos = chunk->position;
+            if (blockInChunkPos.x == 0) {
+                chunkPos = chunkPos + Vec3i(-1, 0, 0);
+            } else if (blockInChunkPos.x == CHUNK_SIZE_XZ - 1) {
+                chunkPos = chunkPos + Vec3i(1, 0, 0);
+            } else if (blockInChunkPos.z == 0) {
+                chunkPos = chunkPos + Vec3i(0, 0, -1);
+            } else if (blockInChunkPos.z == CHUNK_SIZE_XZ - 1) {
+                chunkPos = chunkPos + Vec3i(0, 0, 1);
+            }
+
+            if (chunkPos != chunk->position) {
+                if (Chunk *chunk = findChunkByChunkPos(chunkPos)) {
+                    chunk->requestRebake();
+                }
+            }
             return;
         }
     }

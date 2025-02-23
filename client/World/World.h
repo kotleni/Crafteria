@@ -40,6 +40,7 @@ public:
     // TODO: Review all allocable things
     void unloadChunk(Chunk *chunk);
 
+    Chunk* findChunkByChunkPos(Vec3i pos);
     bool areNeighborsGenerated(const Vec3i &chunkPos);
     void updateChunks();
 
