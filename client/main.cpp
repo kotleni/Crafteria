@@ -150,6 +150,56 @@ float crosshairVertices[] = {
      0.0f,  0.02f, 0.0f   // Top point
 };
 
+constexpr int SLOT_COUNT = 9;
+constexpr int SLOT_SIZE = 46;
+constexpr int SLOT_SPACING = 4;
+constexpr int SLOT_PADDING = 4;
+constexpr int HOTBAR_WIDTH = SLOT_COUNT * (SLOT_SIZE + SLOT_SPACING) + SLOT_SIZE + 26;
+constexpr int HOTBAR_HEIGHT = SLOT_SIZE + 8;
+
+int selectedSlot = 0;
+
+BlockID hotbarBlocksIds[9] = {
+    BLOCK_STONE,
+    BLOCK_COBBLESTONE,
+    BLOCK_DIRT,
+    BLOCK_SNOW,
+    BLOCK_SAND,
+    BLOCK_GRASS,
+    BLOCK_PLANKS,
+    BLOCK_WATER,
+    BLOCK_TORCH,
+};
+
+void renderHotbar(int screenWidth, int screenHeight, std::unordered_map<BlockID, GLuint> glTextures) {
+    ImGui::SetNextWindowPos(ImVec2((screenWidth - HOTBAR_WIDTH) / 2, screenHeight - HOTBAR_HEIGHT - 10));
+    ImGui::SetNextWindowSize(ImVec2(HOTBAR_WIDTH, HOTBAR_HEIGHT));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(SLOT_PADDING, SLOT_PADDING));
+    ImGui::Begin("Hotbar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove);
+
+    for (int i = 0; i < SLOT_COUNT; i++) {
+        BlockID blockId = hotbarBlocksIds[i];
+
+        if (i > 0) ImGui::SameLine();
+
+        ImVec4 slotColor = (i == selectedSlot) ? ImVec4(0.7f, 0.8f, 0.8f, 1.0f) : ImVec4(0.1f, 0.1f, 0.1f, 1.0f);
+        ImGui::PushStyleColor(ImGuiCol_Button, slotColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5f, 0.8f, 1.0f, 1.0f)); // Lighter when hovered
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.4f, 0.9f, 1.0f)); // Deep blue when clicked
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(SLOT_PADDING, SLOT_PADDING));
+
+        if (ImGui::ImageButton(("##slot" + std::to_string(i)).c_str(), glTextures[blockId], ImVec2(SLOT_SIZE - SLOT_PADDING, SLOT_SIZE - SLOT_PADDING))) {
+            selectedSlot = i;
+        }
+
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor(3);
+    }
+
+    ImGui::End();
+    ImGui::PopStyleVar();
+}
+
 int main() {
     RuntimeConfig runtimeConfig = RuntimeConfig();
 
@@ -269,7 +319,13 @@ int main() {
             if (runtimeConfig.isMouseRelative)
             processMouseMotion(event, *world->player);
 
-            if (event.type == SDL_MOUSEBUTTONDOWN)   {
+            if (event.type == SDL_MOUSEWHEEL) {
+                if (event.wheel.y > 0) {
+                    selectedSlot = (selectedSlot - 1 + SLOT_COUNT) % SLOT_COUNT; // Scroll up
+                } else if (event.wheel.y < 0) {
+                    selectedSlot = (selectedSlot + 1) % SLOT_COUNT; // Scroll down
+                }
+            } else if (event.type == SDL_MOUSEBUTTONDOWN)   {
                 switch (event.button.button) {
                     case SDL_BUTTON_LEFT: // Destroy
                         glm::ivec3 targetBlock;
@@ -305,7 +361,7 @@ int main() {
                             targetBlock2,
                             prevPos2
                         )) {
-                            world->setBlock(BLOCK_PLANKS, Vec3i(prevPos2));
+                            world->setBlock(hotbarBlocksIds[selectedSlot], Vec3i(prevPos2));
                         }
                         break;
                 }
@@ -371,6 +427,8 @@ int main() {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
+
+        renderHotbar(width, height, glTextures);
 
         if (isShowDebugMenu) {
             ImGui::Begin("Menu", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
