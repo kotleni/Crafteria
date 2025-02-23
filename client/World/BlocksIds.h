@@ -16,7 +16,8 @@ enum BlocksIds: BlockID {
     BLOCK_LEAVES = 7,
     BLOCK_LAVA = 8,
     BLOCK_WATER = 9,
-    BLOCK_SAND = 10
+    BLOCK_SAND = 10,
+    BLOCK_IRON_ORE = 11
 };
 
 struct BlockData {
@@ -26,7 +27,7 @@ struct BlockData {
     bool isSolid;
 };
 
-inline const BlockData BLOCKS_DATA[10] = {
+inline const BlockData BLOCKS_DATA[11] = {
     { "cobblestone", BLOCK_COBBLESTONE, 0, 32, true },
     { "dirt", BLOCK_DIRT, 0, 32, true },
     { "grass", BLOCK_GRASS, 32, 0, true },
@@ -37,6 +38,7 @@ inline const BlockData BLOCKS_DATA[10] = {
     { "oak_planks", BLOCK_PLANKS, 96, 32, true },
     { "stone", BLOCK_STONE, 32, 32, true },
     { "sand", BLOCK_SAND, 32, 64, true },
+    { "iron_ore", BLOCK_IRON_ORE, 0, 0, true },
 };
 
 #endif

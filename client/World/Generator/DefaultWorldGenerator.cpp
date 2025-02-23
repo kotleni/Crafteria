@@ -61,7 +61,17 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
             chunk->setBlock(surfaceBlock, {xx, y, zz});
 
             for (int depth = y - 1; depth >= 0; --depth) {
-                chunk->setBlock(y - (depth - 1) < 3 ? mediumBlock : BLOCK_STONE, {xx, depth, zz});
+                BlockID activeBlock = y - (depth - 1) < 3 ? mediumBlock : BLOCK_STONE;
+                if (activeBlock == BLOCK_STONE) {
+                    float noiseValue = this->perlin.octave3D_01(worldX * 0.1, depth * 0.1, worldZ * 0.1, 4);
+
+                    if (depth > 40 && noiseValue > 0.75) {
+                        activeBlock = BLOCK_IRON_ORE;
+                    } else if (depth > 10 && noiseValue > 0.7) {
+                        activeBlock = BLOCK_SAND;
+                    }
+                }
+                chunk->setBlock(activeBlock, {xx, depth, zz});
             }
 
             if (y < realSeaLevel) {
