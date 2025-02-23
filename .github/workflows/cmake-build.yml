@@ -38,10 +38,10 @@ jobs:
           mkdir -p ${{github.workspace}}/artifact
           cp -r ${{github.workspace}}/Assets ${{github.workspace}}/artifact/
           cp -r ${{github.workspace}}/build/crafteria ${{github.workspace}}/artifact/
-          tar -czvf crafteria-linux-x86_64-${{ github.ref_name }}-${{ github.sha }}.tar.gz -C ${{github.workspace}}/artifact .
+          tar -czvf crafteria-linux-x86_64-${{ github.sha }}.tar.gz -C ${{github.workspace}}/artifact .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: build-artifact
-          path: crafteria-linux-x86_64-${{ github.ref_name }}-${{ github.sha }}.tar.gz
+          path: crafteria-linux-x86_64-${{ github.sha }}.tar.gz
