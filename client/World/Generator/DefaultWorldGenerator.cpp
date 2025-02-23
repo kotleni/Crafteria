@@ -25,7 +25,7 @@ std::vector<BiomeConfig> biomeConfigs = {
 
 void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
     constexpr float scale = 0.08f;
-    constexpr int octaves = 6;
+    constexpr int octaves = 4;
     constexpr int realSeaLevel = 67;
     constexpr float biomeBlendScale = 0.009f;
 
@@ -38,7 +38,7 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
             int worldZ = chunkWorldZ + zz;
 
             double biomeNoise = this->perlin.octave2D_01(worldX * biomeBlendScale, worldZ * biomeBlendScale, octaves);
-            double biomeLerpFactor = biomeNoise * (biomeConfigs.size() - 1);
+            double biomeLerpFactor = biomeNoise * (biomeConfigs.size());
             int biomeIndex1 = static_cast<int>(biomeLerpFactor);
             int biomeIndex2 = std::min(biomeIndex1 + 1, static_cast<int>(biomeConfigs.size() - 1));
             float blendFactor = biomeLerpFactor - biomeIndex1;
