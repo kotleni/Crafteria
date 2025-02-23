@@ -273,7 +273,7 @@ int main() {
                             0.05f,
                             [&](const glm::ivec3 &pos) {
                                 auto block = world->getBlock(Vec3i(pos));
-                                return block && block->getId() != BLOCK_AIR;
+                                return block && block->isSolid();
                             },
                             targetBlock,
                             prevPos
@@ -292,7 +292,7 @@ int main() {
                             0.05f,
                             [&](const glm::ivec3 &pos) {
                                 auto block = world->getBlock(Vec3i(pos));
-                                return block && block->getId() != BLOCK_AIR;
+                                return block && block->isSolid();
                             },
                             targetBlock2,
                             prevPos2
@@ -330,7 +330,7 @@ int main() {
             0.5f,
             [&](const glm::ivec3 &pos) {
                 auto block = world->getBlock(Vec3i(pos));
-                return block && block->getId() != BLOCK_AIR;
+                return block && block->isSolid();
             },
             targetBlock2,
             hitNormal2
