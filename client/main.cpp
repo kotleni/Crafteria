@@ -6,6 +6,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_video.h>
+#include <SDL3/SDL_keycode.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
@@ -13,6 +14,9 @@
 #include <thread>
 #include <unordered_map>
 #include <execution>
+#include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_keycode.h>
 
 #include "Shader.h"
 #include "Image.h"
@@ -315,6 +319,8 @@ int main() {
         glBindVertexArray(0);
     }
 
+    std::vector<SDL_Keycode> pressedKeys = std::vector<SDL_Keycode>(8);
+
     while (running) {
         globalClock.tick();
 
@@ -381,27 +387,37 @@ int main() {
                 }
             }
 
-            float camera_speed = 0.01f * globalClock.delta;
             if (event.type == SDL_EVENT_KEY_DOWN) {
+                if (std::ranges::find(pressedKeys, event.key.key) == pressedKeys.end()) {
+                    pressedKeys.push_back(event.key.key);
+                }
+
                 switch (event.key.key) {
                     case SDLK_F3:
                         runtimeConfig.isMouseRelative = !runtimeConfig.isMouseRelative;
-                        SDL_SetWindowRelativeMouseMode(window, runtimeConfig.isMouseRelative);
-                        break;
-
-                    case SDLK_W:
-                        world->player->moveRelative(camera_speed * world->player->camera_front);
-                        break;
-                    case SDLK_S:
-                        world->player->moveRelative(-(camera_speed * world->player->camera_front));
-                        break;
-                    case SDLK_A:
-                        world->player->moveRelative(-(glm::normalize(glm::cross(world->player->camera_front, world->player->camera_up)) * camera_speed));
-                        break;
-                    case SDLK_D:
-                        world->player->moveRelative(glm::normalize(glm::cross(world->player->camera_front, world->player->camera_up)) * camera_speed);
-                        break;
+                    SDL_SetWindowRelativeMouseMode(window, runtimeConfig.isMouseRelative);
+                    break;
                 }
+            } else if (event.type == SDL_EVENT_KEY_UP) {
+                pressedKeys.erase(std::ranges::remove(pressedKeys, event.key.key).begin(), pressedKeys.end());
+            }
+        }
+
+        float camera_speed = 0.01f * globalClock.delta;
+        for (SDL_Keycode key : pressedKeys) {
+            switch (key) {
+                case SDLK_W:
+                    world->player->moveRelative(camera_speed * world->player->camera_front);
+                break;
+                case SDLK_S:
+                    world->player->moveRelative(-(camera_speed * world->player->camera_front));
+                break;
+                case SDLK_A:
+                    world->player->moveRelative(-(glm::normalize(glm::cross(world->player->camera_front, world->player->camera_up)) * camera_speed));
+                break;
+                case SDLK_D:
+                    world->player->moveRelative(glm::normalize(glm::cross(world->player->camera_front, world->player->camera_up)) * camera_speed);
+                break;
             }
         }
 
