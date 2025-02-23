@@ -1,7 +1,7 @@
 #ifndef CHUNKSRENDERER_H
 #define CHUNKSRENDERER_H
 
-#include <GL/glew.h>
+#include "../GL/glad.h"
 #include <GL/gl.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>

@@ -1,7 +1,7 @@
 #ifndef H_SHADER
 #define H_SHADER
 
-#include <GL/glew.h>
+#include "GL/glad.h"
 #include <GL/gl.h>
 
 #include <SDL3/SDL_opengl.h>

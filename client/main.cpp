@@ -1,6 +1,8 @@
 #define GL_GLEXT_PROTOTYPES
 
 #include <array>
+#define GLAD_GL_IMPLEMENTATION
+#include "GL/glad.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_video.h>
@@ -223,8 +225,16 @@ int main() {
 
     SDL_GLContext context = SDL_GL_CreateContext(window);
 
-    glewExperimental = GL_TRUE;
-    glewInit();
+    if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
+    {
+        std::cout << "Failed to initialize GLAD" << std::endl;
+        return -1;
+    }
+
+    std::cout << std::setw(34) << std::left << "OpenGL Version: " << GLVersion.major << "." << GLVersion.minor << std::endl;
+    std::cout << std::setw(34) << std::left << "OpenGL Shading Language Version: " << (char *)glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
+    std::cout << std::setw(34) << std::left << "OpenGL Vendor:" << (char *)glGetString(GL_VENDOR) << std::endl;
+    std::cout << std::setw(34) << std::left << "OpenGL Renderer:" << (char *)glGetString(GL_RENDERER) << std::endl;
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -242,8 +252,8 @@ int main() {
 
     // Enable debug
     // TODO: Disable for macOS (force)
-    glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(MessageCallback, 0);
+    // glEnable(GL_DEBUG_OUTPUT);
+    // glDebugMessageCallback(MessageCallback, 0);
 
     // Loading images and store texture names
     // FIXME(hax): I think this is bad way

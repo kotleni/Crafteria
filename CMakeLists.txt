@@ -3,15 +3,17 @@ cmake_minimum_required(VERSION 3.5)
 project(crafteria)
 set(CMAKE_CXX_STANDARD 20)
 
+set(USE_EXT_DEPENDENCIES_FROM_PACKAGE_MANAGER false)
+
 find_package(OpenGL REQUIRED COMPONENTS OpenGL)
 
-add_subdirectory(ThirdParty/SDL/ EXCLUDE_FROM_ALL)
+if (USE_EXT_DEPENDENCIES_FROM_PACKAGE_MANAGER)
+    find_package(SDL3 REQUIRED)
+else ()
+    add_subdirectory(ThirdParty/SDL/ EXCLUDE_FROM_ALL)
+endif ()
 
-#find_package(SDL2 REQUIRED)
 include_directories(${SDL3_INCLUDE_DIRS})
-
-find_package(GLEW REQUIRED)
-include_directories(${GLEW_INCLUDE_DIRS})
 
 find_package(glm REQUIRED)
 include_directories(${glm_INCLUDE_DIRS})
@@ -31,6 +33,8 @@ add_executable(crafteria
         client/World/Generator/DefaultWorldGenerator.cpp
         client/Render/ChunksRenderer.cpp
 
+        client/GL/glad.c
+
         # imgui
         client/GUI/imgui.cpp
         client/GUI/imgui_impl_sdl3.cpp
@@ -39,7 +43,7 @@ add_executable(crafteria
         client/GUI/imgui_tables.cpp
         client/GUI/imgui_draw.cpp
 )
-target_link_libraries(${PROJECT_NAME} SDL3::SDL3 ${GLEW_LIBRARIES} OpenGL::GL)
+target_link_libraries(${PROJECT_NAME} SDL3::SDL3 OpenGL::GL)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
 include(CPack)
