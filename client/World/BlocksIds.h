@@ -21,6 +21,7 @@ enum BlocksIds: BlockID {
     BLOCK_GRASS_BUSH = 12,
     BLOCK_FLOWER_RED = 13,
     BLOCK_TORCH = 14,
+    BLOCK_SNOW = 15,
 };
 
 struct BlockData {
@@ -31,7 +32,7 @@ struct BlockData {
     bool isFlora;
 };
 
-inline const BlockData BLOCKS_DATA[14] = {
+inline const BlockData BLOCKS_DATA[15] = {
     { "cobblestone", BLOCK_COBBLESTONE, 0, 32, true, false },
     { "dirt", BLOCK_DIRT, 0, 32, true, false },
     { "grass", BLOCK_GRASS, 32, 0, true, false },
@@ -46,6 +47,7 @@ inline const BlockData BLOCKS_DATA[14] = {
     { "grass_bush", BLOCK_GRASS_BUSH, 0, 0, false, true },
     { "flower_red", BLOCK_FLOWER_RED, 0, 0, false, true },
     { "torch", BLOCK_TORCH, 0, 0, false, true },
+    { "snow", BLOCK_SNOW, 0, 0, true, false },
 };
 
 #endif

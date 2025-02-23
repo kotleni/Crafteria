@@ -17,6 +17,7 @@ struct BiomeConfig {
 // Ordering is matter, bcs chunks changes smoothly depends by order
 std::vector<BiomeConfig> biomeConfigs = {
     { 0, "forest", BLOCK_GRASS, BLOCK_DIRT, 64, 8.0f, true },
+    { 5, "snow", BLOCK_SNOW, BLOCK_DIRT, 68, 8.0f, false },
     { 2, "plain", BLOCK_GRASS, BLOCK_DIRT, 70, 4.0f, true },
     { 3, "desert", BLOCK_SAND, BLOCK_SAND, 64, 7.0f, false },
     { 5, "ocean", BLOCK_SAND, BLOCK_SAND, 44, 16.0f, true },
@@ -89,7 +90,7 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
                     if (chunk->getBlock(pos) == nullptr)
                         chunk->setBlock(BLOCK_WATER, pos);
                 }
-            } else if (activeBiome.id == 0 || activeBiome.id == 2) { // FIXME: HAX
+            } else if (activeBiome.id == 0 || activeBiome.id == 2 || activeBiome.id == 5) { // FIXME: HAX
                 double populationMap = this->perlin.octave2D_11(worldX, worldZ, 2);
                 if (populationMap > 0.54) {
                     std::pair<Vec3i, BlockID> treePrefab[] = {
