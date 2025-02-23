@@ -51,6 +51,3 @@ add_executable(crafteria
         client/GUI/imgui_draw.cpp
 )
 target_link_libraries(${PROJECT_NAME} SDL3::SDL3 OpenGL::GL glm::glm)
-
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
-include(CPack)
