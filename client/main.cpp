@@ -1,7 +1,9 @@
 #define GL_GLEXT_PROTOTYPES
 
 #include <array>
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_video.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
@@ -22,7 +24,7 @@
 #include "utils/RuntimeConfig.h"
 
 #include "GUI/imgui.h"
-#include "GUI/imgui_impl_sdl2.h"
+#include "GUI/imgui_impl_sdl3.h"
 #include "GUI/imgui_impl_opengl3.h"
 #include "GUI/imgui_internal.h"
 
@@ -47,7 +49,7 @@ float lastX = 400, lastY = 300;
 bool firstMouse = true;
 
 void processMouseMotion(SDL_Event &event, Player &player) {
-    if (event.type == SDL_MOUSEMOTION) {
+    if (event.type == SDL_EVENT_MOUSE_MOTION) {
         float xoffset = event.motion.xrel * 0.1f;
         float yoffset = -event.motion.yrel * 0.1f;
 
@@ -211,8 +213,7 @@ int main() {
     runtimeConfig.isChunkBakingEnabled = true;
 
     SDL_Init(SDL_INIT_VIDEO);
-    SDL_Window *window = SDL_CreateWindow("Crafteria", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1400, 900,
-                                          SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    SDL_Window *window = SDL_CreateWindow("Crafteria", 1400, 900, SDL_WINDOW_OPENGL);
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
@@ -234,7 +235,7 @@ int main() {
     ImGui::StyleColorsDark();
 
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForOpenGL(window, context);
+    ImGui_ImplSDL3_InitForOpenGL(window, context);
     ImGui_ImplOpenGL3_Init("#version 330 core");
 
     bool isShowDebugMenu = true;
@@ -313,22 +314,22 @@ int main() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (!runtimeConfig.isMouseRelative)
-                ImGui_ImplSDL2_ProcessEvent(&event);
+                ImGui_ImplSDL3_ProcessEvent(&event);
 
-            if (event.type == SDL_QUIT) running = false;
+            if (event.type == SDL_EVENT_QUIT) running = false;
             if (runtimeConfig.isMouseRelative)
             processMouseMotion(event, *world->player);
 
-            if (event.type == SDL_MOUSEMOTION) {
+            if (event.type == SDL_EVENT_MOUSE_MOTION) {
                 if (runtimeConfig.isMouseRelative)
                     SDL_WarpMouseInWindow(window, width / 2, height / 2);
-            } else if (event.type == SDL_MOUSEWHEEL) {
+            } else if (event.type == SDL_EVENT_MOUSE_WHEEL) {
                 if (event.wheel.y > 0) {
                     selectedSlot = (selectedSlot - 1 + SLOT_COUNT) % SLOT_COUNT; // Scroll up
                 } else if (event.wheel.y < 0) {
                     selectedSlot = (selectedSlot + 1) % SLOT_COUNT; // Scroll down
                 }
-            } else if (event.type == SDL_MOUSEBUTTONDOWN)   {
+            } else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)   {
                 switch (event.button.button) {
                     case SDL_BUTTON_LEFT: // Destroy
                         glm::ivec3 targetBlock;
@@ -370,20 +371,26 @@ int main() {
                 }
             }
 
-            if (event.type == SDL_KEYDOWN) {
-                switch (event.key.keysym.sym) {
+            float camera_speed = 0.01f * globalClock.delta;
+            if (event.type == SDL_EVENT_KEY_DOWN) {
+                switch (event.key.key) {
                     case SDLK_F3:
                         runtimeConfig.isMouseRelative = !runtimeConfig.isMouseRelative;
-                        SDL_SetRelativeMouseMode(static_cast<SDL_bool>(runtimeConfig.isMouseRelative));
+                        SDL_SetWindowRelativeMouseMode(window, runtimeConfig.isMouseRelative);
                         break;
-                    // case SDLK_r:
-                    //     x+=1;
-                    // if (x >= 4) {
-                    //     x = 0;
-                    //     z+=1;
-                    // }
-                    //     world->generateFilledChunk({x, 0, z});
-                    //     break;
+
+                    case SDLK_W:
+                        world->player->moveRelative(camera_speed * world->player->camera_front);
+                        break;
+                    case SDLK_S:
+                        world->player->moveRelative(-(camera_speed * world->player->camera_front));
+                        break;
+                    case SDLK_A:
+                        world->player->moveRelative(-(glm::normalize(glm::cross(world->player->camera_front, world->player->camera_up)) * camera_speed));
+                        break;
+                    case SDLK_D:
+                        world->player->moveRelative(glm::normalize(glm::cross(world->player->camera_front, world->player->camera_up)) * camera_speed);
+                        break;
                 }
             }
         }
@@ -405,13 +412,6 @@ int main() {
             chunksRenderer.targetBlock = Vec3i(targetBlock2);
         }
 
-        const Uint8 *state = SDL_GetKeyboardState(nullptr);
-        float camera_speed = 0.01f * globalClock.delta;
-        if (state[SDL_SCANCODE_W]) world->player->moveRelative(camera_speed * world->player->camera_front);
-        if (state[SDL_SCANCODE_S]) world->player->moveRelative(-(camera_speed * world->player->camera_front));
-        if (state[SDL_SCANCODE_A]) world->player->moveRelative(-(glm::normalize(glm::cross(world->player->camera_front, world->player->camera_up)) * camera_speed));
-        if (state[SDL_SCANCODE_D]) world->player->moveRelative(glm::normalize(glm::cross(world->player->camera_front, world->player->camera_up)) * camera_speed);
-
         // glBindVertexArray(vao);
         Vec3i playerPos = {static_cast<int>(world->player->getPosition().x), static_cast<int>(world->player->getPosition().y), static_cast<int>(world->player->getPosition().z)};
         chunksRenderer.renderChunks(world, shader, waterShader, selectionShader, floraShader, playerPos);
@@ -428,7 +428,7 @@ int main() {
 
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
         renderHotbar(width, height, glTextures);
@@ -513,10 +513,10 @@ int main() {
     }
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 
-    SDL_GL_DeleteContext(context);
+    SDL_GL_DestroyContext(context);
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;

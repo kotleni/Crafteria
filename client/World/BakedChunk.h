@@ -1,7 +1,7 @@
 #ifndef BAKEDCHUNK_H
 #define BAKEDCHUNK_H
 
-#include <SDL_timer.h>
+#include <SDL3/SDL_timer.h>
 #include <vector>
 #include "BakedChunkPart.h"
 

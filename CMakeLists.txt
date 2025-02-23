@@ -5,8 +5,10 @@ set(CMAKE_CXX_STANDARD 20)
 
 find_package(OpenGL REQUIRED COMPONENTS OpenGL)
 
-find_package(SDL2 REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS})
+add_subdirectory(ThirdParty/SDL/ EXCLUDE_FROM_ALL)
+
+#find_package(SDL2 REQUIRED)
+include_directories(${SDL3_INCLUDE_DIRS})
 
 find_package(GLEW REQUIRED)
 include_directories(${GLEW_INCLUDE_DIRS})
@@ -31,13 +33,13 @@ add_executable(crafteria
 
         # imgui
         client/GUI/imgui.cpp
-        client/GUI/imgui_impl_sdl2.cpp
+        client/GUI/imgui_impl_sdl3.cpp
         client/GUI/imgui_impl_opengl3.cpp
         client/GUI/imgui_widgets.cpp
         client/GUI/imgui_tables.cpp
         client/GUI/imgui_draw.cpp
 )
-target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} OpenGL::GL)
+target_link_libraries(${PROJECT_NAME} SDL3::SDL3 ${GLEW_LIBRARIES} OpenGL::GL)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
 include(CPack)
