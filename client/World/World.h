@@ -25,9 +25,6 @@ public:
     AbstractWorldGenerator *generator;
     std::vector<Chunk *> chunks;
 
-    bool isChunkGenerationEnabled = true;
-    bool isChunkBakingEnabled = true;
-
     RuntimeConfig *runtimeConfig;
 
     World(int seedValue, RuntimeConfig *runtimeConfig);

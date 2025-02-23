@@ -157,6 +157,8 @@ int main() {
     runtimeConfig.isEnableVsync = true;
     runtimeConfig.isMouseRelative = false;
     runtimeConfig.maxRenderingDistance = 6;
+    runtimeConfig.isChunkGenerationEnabled = true;
+    runtimeConfig.isChunkBakingEnabled = true;
 
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window *window = SDL_CreateWindow("Crafteria", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1400, 900,
@@ -385,8 +387,8 @@ int main() {
 
                 ImGui::Separator();
 
-                ImGui::Checkbox("Generate new chunks", &world->isChunkGenerationEnabled);
-                ImGui::Checkbox("Bake new chunks", &world->isChunkBakingEnabled);
+                ImGui::Checkbox("Generate new chunks", &runtimeConfig.isChunkGenerationEnabled);
+                ImGui::Checkbox("Bake new chunks", &runtimeConfig.isChunkBakingEnabled);
 
                 ImGui::EndTabItem();
             }
@@ -408,7 +410,7 @@ int main() {
                         static_cast<int>(world->player->getPosition().z / CHUNK_SIZE_XZ)
                     };
 
-                    world->isChunkBakingEnabled = false;
+                    runtimeConfig.isChunkBakingEnabled = false;
                     for (int x = 0; x < CHUNK_SIZE_XZ; x++) {
                         for (int y = 0; y < CHUNK_SIZE_Y; y++) {
                             for (int z = 0; z < CHUNK_SIZE_XZ; z++) {
@@ -416,7 +418,7 @@ int main() {
                             }
                         }
                     }
-                    world->isChunkBakingEnabled = true;
+                    runtimeConfig.isChunkBakingEnabled = true;
                 }
 
                 ImGui::EndTabItem();
