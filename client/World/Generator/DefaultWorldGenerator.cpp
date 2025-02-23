@@ -64,6 +64,8 @@ void DefaultWorldGenerator::generateChunk(Chunk *chunk) {
                 float floraNoise = this->perlin.octave3D_01(worldX * 0.1, y * 0.1, worldZ * 0.1, 2);
                 if (floraNoise > 0.77) {
                     chunk->setBlock(BLOCK_GRASS_BUSH, {xx, y + 1, zz});
+                } else if (floraNoise < 0.23) {
+                    chunk->setBlock(BLOCK_FLOWER_RED, {xx, y + 1, zz});
                 }
             }
 

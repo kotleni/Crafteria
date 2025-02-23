@@ -5,7 +5,7 @@ bool Block::isSolid() const {
 }
 
 bool Block::isFlora() const {
-    return id == BLOCK_GRASS_BUSH;
+    return id == BLOCK_GRASS_BUSH || id == BLOCK_FLOWER_RED;
 }
 
 
