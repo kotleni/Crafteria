@@ -48,7 +48,6 @@ class ChunksRenderer {
 public:
     Vec3i targetBlock = Vec3i(0, 0, 0);
 
-    bool isUseSingleTexture = false;
     int lastCountOfTotalVertices = 0;
 
     ChunksRenderer(std::unordered_map<BlockID, GLuint> glTextures, RuntimeConfig *runtimeConfig);

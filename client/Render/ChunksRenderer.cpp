@@ -130,8 +130,7 @@ void ChunksRenderer::renderChunks(World *world, Shader *shader, Shader *waterSha
 
     glDisable(GL_BLEND);
 
-    if (isUseSingleTexture)
-        glBindTexture(GL_TEXTURE_2D, 1);
+    glBindTexture(GL_TEXTURE_2D, 1);
 
     // Draw all solid & unload if needed
     for (const auto &chunk: chunks) {
@@ -173,8 +172,7 @@ void ChunksRenderer::renderChunks(World *world, Shader *shader, Shader *waterSha
 
             shader->setVec3("pos", pos);
 
-            if (!isUseSingleTexture)
-                glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
+            glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
             glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
             lastCountOfTotalVertices += part.vertices.size() / 9; // Verticles count
         }
@@ -217,8 +215,7 @@ void ChunksRenderer::renderChunks(World *world, Shader *shader, Shader *waterSha
             waterShader->setVec3("pos", pos);
             waterShader->setVec3("worldPos", pos);
 
-            if (!isUseSingleTexture)
-                glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
+            glBindTexture(GL_TEXTURE_2D, this->glTextures[part.blockID]);
             glDrawElements(GL_TRIANGLES, part.indices.size(), GL_UNSIGNED_INT, nullptr);
             lastCountOfTotalVertices += part.vertices.size() / 9; // Verticles count
         }

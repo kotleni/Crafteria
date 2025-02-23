@@ -387,7 +387,6 @@ int main() {
 
                 ImGui::Checkbox("Generate new chunks", &world->isChunkGenerationEnabled);
                 ImGui::Checkbox("Bake new chunks", &world->isChunkBakingEnabled);
-                ImGui::Checkbox("Use single texture", &chunksRenderer.isUseSingleTexture);
 
                 ImGui::EndTabItem();
             }
