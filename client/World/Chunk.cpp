@@ -89,7 +89,25 @@ void Chunk::addFace(std::vector<GLfloat> *vertices, std::vector<GLuint> *indices
     // Reduce light for sides
     if (faceDirection.y == 0) normalizedLight /= 2;
 
-    float finalLight = normalizedLight;
+    // Torch light influence
+    const int TORCH_RADIUS = 5;
+    float torchLight = 0.0f;
+
+    for (int dx = -TORCH_RADIUS; dx <= TORCH_RADIUS; dx++) {
+        for (int dy = -TORCH_RADIUS; dy <= TORCH_RADIUS; dy++) {
+            for (int dz = -TORCH_RADIUS; dz <= TORCH_RADIUS; dz++) {
+                Vec3i nearbyPos = blockPos + Vec3i(dx, dy, dz);
+                auto nearbyBlock = blocksSource->getBlock(nearbyPos);
+                if (nearbyBlock && nearbyBlock->getId() == BLOCK_TORCH) {
+                    float distance = glm::length(glm::vec3(dx, dy, dz));
+                    torchLight += std::max(0.0f, 0.5f - (distance / TORCH_RADIUS));
+                }
+            }
+        }
+    }
+
+    float finalLight = std::min(1.0f, normalizedLight + torchLight);
+    // float finalLight = normalizedLight;
 
     for (int i = 0; i < sizeof(localOffsets); i++) {
         glm::vec2 localOffset = localOffsets[i];
