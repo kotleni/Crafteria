@@ -13,7 +13,6 @@
 #include <iostream>
 #include <thread>
 #include <unordered_map>
-#include <execution>
 
 #include "Shader.h"
 #include "Image.h"
